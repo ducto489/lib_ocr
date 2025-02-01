@@ -3,6 +3,7 @@ training_images/images
 training_images/labels.json
 debug/
 lightning_logs/
+wandb/
 
 note.md
 # Byte-compiled / optimized / DLL files
