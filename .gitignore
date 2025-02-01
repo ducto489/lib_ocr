@@ -1,6 +1,8 @@
 # images
-trainning_images/images
-trainning_images/labels.json
+training_images/images
+training_images/labels.json
+debug/
+lightning_logs/
 
 note.md
 # Byte-compiled / optimized / DLL files
