@@ -25,25 +25,14 @@ class OCRDataset(Dataset):
     def __getitem__(self, idx):
         image_name, label = self.data[idx]
         image_path = os.path.join(self.data_path, 'images', image_name + ".jpg")
-        # image = cv2.imread(image_path)
-        image = Image.open(image_path).convert('L')
+        image = Image.open(image_path).convert('RGB')
         # TODO: add online augmentation pipeline
         if self.transform:
             image = self.transform(image)
         return image, label
 
 
-# TODO: function to get vocab from data
-def get_vocab(data_path):
-    tgt_path = os.path.join(data_path, 'labels.json')
-    with open(tgt_path, 'r') as f:
-        data = json.load(f)
-    data = data['labels']
-    vocab = set()
-    for label in data.values():
-        vocab.update(list(label))
-    return list(vocab)
-# VOCAB = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "â", "á"]
+
 
 class ResizeNormalize(object):
 
@@ -71,10 +60,17 @@ class NormalizePAD(object):
         img = self.toTensor(img)
         img.sub_(0.5).div_(0.5)
         c, h, w = img.size()
-        Pad_img = torch.FloatTensor(*self.max_size).fill_(0)
+        Pad_img = torch.FloatTensor(*self.max_size).fill_(0) 
         Pad_img[:, :, :w] = img  # right pad
-        if self.max_size[2] != w:  # add border Pad
-            Pad_img[:, :, w:] = img[:, :, w - 1].unsqueeze(2).expand(c, h, self.max_size[2] - w)
+        
+        if self.max_size[2] != w:  # add the same background for new padding
+            temp = img[:, :, w - 1].unsqueeze(2).expand(c, h, self.max_size[2] - w)
+            temp_1 = img[:, :, w - 1].unsqueeze(2).expand(c, h, self.max_size[2] - w)
+            print(temp.shape)
+            print(temp_1.shape)
+        #     Pad_img[:, :, w:] = img[:, :, w - 1].unsqueeze(2).expand(c, h, self.max_size[2] - w)
+            Pad_img[:, :, w:] = img[:, :, w - 1].unsqueeze(2)
+            
 
         return Pad_img
 
