@@ -1,12 +1,13 @@
 import torch.nn as nn
 import timm
 
+
 class resnet50(nn.Module):
     def __init__(self):
         super().__init__()
-        backbone = timm.create_model('resnet50', pretrained=True)
+        backbone = timm.create_model("resnet50", pretrained=True)
         core = list(backbone.children())[:-2]
-        self.backbone = nn.Sequential(*core)    
+        self.backbone = nn.Sequential(*core)
         self.AdaptiveAvgPool = nn.AdaptiveAvgPool2d((None, 1))
 
     def forward(self, x):
@@ -15,10 +16,11 @@ class resnet50(nn.Module):
         x = x.squeeze(3)
         return x
 
+
 class resnet18(nn.Module):
     def __init__(self):
         super().__init__()
-        backbone = timm.create_model('resnet18', pretrained=True)
+        backbone = timm.create_model("resnet18", pretrained=True)
         core = list(backbone.children())[:-2]
         self.backbone = nn.Sequential(*core)
         self.AdaptiveAvgPool = nn.AdaptiveAvgPool2d((None, 1))
