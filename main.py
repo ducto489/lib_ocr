@@ -19,23 +19,28 @@ from data.vocab import Vocab
 class OCRModel(LightningModule):
     def __init__(
         self,
-        backbone_name,
-        seq_name,
-        pred_name,
-        batch_size,
-        learning_rate,
-        weight_decay,
-        epochs,
+        backbone_name: str = "resnet18",
+        seq_name: str = "bilstm",
+        pred_name: str = "ctc",
+        batch_size: int = 64,
+        learning_rate: float = 1e-3,
+        weight_decay: float = 1e-5,
+        # epochs: int = 30,
     ):
         super().__init__()
-        self.backbone_name = backbone_name
+        logger.debug(f"OCRModel.__init__ called with:")
+        logger.debug(f"backbone_name={backbone_name}")
+        logger.debug(f"seq_name={seq_name}")
+        logger.debug(f"pred_name={pred_name}")
+        logger.debug(f"batch_size={batch_size}")
+        logger.debug(f"learning_rate={learning_rate}")
+        logger.debug(f"weight_decay={weight_decay}")
+
+        self.backbone_name = backbone_name if backbone_name is not None else "resnet18"
         self.seq_name = seq_name
         self.pred_name = pred_name
-        logger.debug(f"{self.backbone_name=}")
-        logger.debug(f"{backbone_name=}")
         # self.vocab = 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~ '
         self.vocab = Vocab("./training_images/labels.json").get_vocab()
-        # breakpoint()
         self.converter = CTCLabelConverter_clovaai(self.vocab, device="cuda")
         self._build_model()
 
@@ -44,7 +49,7 @@ class OCRModel(LightningModule):
         self.metric = None
         self.learning_rate = learning_rate
         self.batch_size = batch_size
-        self.epochs = epochs
+        # self.epochs = epochs
         self.weight_decay = weight_decay
 
     def _build_model(self):
