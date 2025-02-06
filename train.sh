@@ -8,4 +8,4 @@ python cli.py fit \
     --model.seq_name "bilstm" \
     --model.pred_name "ctc" \
     --model.learning_rate 1e-3 \
-    --trainer.max_epochs 10
+    --trainer.max_epochs 30
