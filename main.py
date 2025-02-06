@@ -25,17 +25,8 @@ class OCRModel(LightningModule):
         batch_size: int = 64,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-5,
-        # epochs: int = 30,
     ):
         super().__init__()
-        logger.debug(f"OCRModel.__init__ called with:")
-        logger.debug(f"backbone_name={backbone_name}")
-        logger.debug(f"seq_name={seq_name}")
-        logger.debug(f"pred_name={pred_name}")
-        logger.debug(f"batch_size={batch_size}")
-        logger.debug(f"learning_rate={learning_rate}")
-        logger.debug(f"weight_decay={weight_decay}")
-
         self.backbone_name = backbone_name if backbone_name is not None else "resnet18"
         self.seq_name = seq_name
         self.pred_name = pred_name
@@ -49,12 +40,9 @@ class OCRModel(LightningModule):
         self.metric = None
         self.learning_rate = learning_rate
         self.batch_size = batch_size
-        # self.epochs = epochs
         self.weight_decay = weight_decay
 
     def _build_model(self):
-        # self.backbone, self.seq_module, self.pred_module = get_module(
-        #     self.backbone_name, self.seq_name, self.pred_name)
         logger.info(f"{self.backbone_name}")
         backbone_cls, seq_module_cls, pred_module_cls = get_module(
             self.backbone_name, self.seq_name, self.pred_name
@@ -89,15 +77,6 @@ class OCRModel(LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        # x, y = batch
-        # y_hat = self.forward(x)
-        # loss = self.loss(y_hat, y)
-
-        # self.log('train_loss', loss)
-        # # decode y_hat -> greedy/beam search
-
-        # # TODO: log images + predictions prob 10%
-        # return loss
         images = batch["images"]
         labels = batch["labels"]
 
@@ -117,40 +96,19 @@ class OCRModel(LightningModule):
         # Log metrics
         self.log("train_loss", loss, prog_bar=True)
 
-        # Log sample predictions periodically
-        # if batch_idx % 100 == 0:
-        #     self._log_predictions(logits, labels, prefix='train')
-
         return loss
 
     def validation_step(self, batch, batch_idx):
-        # x, y = batch
-        # y_hat = self.forward(x)
-        # loss = self.loss(y_hat, y)
-
-        # self.log('val_loss', loss)
-        # # decode y_hat -> greedy/beam search
-        # # TODO: log images + predictions prob 10%
-        # return loss
-
-        # Calculate loss (same as training)
 
         images = batch["images"]
         labels = batch["labels"]
 
         logits = self(images)
         log_probs = logits.log_softmax(2).permute(1, 0, 2)
-        # text_encoded = [
-        #     torch.tensor(self.converter.encode(label)) for label in labels
-        # ]
 
-        # text_lengths = torch.tensor([len(t)
-        #                              for t in text_encoded]).to(self.device)
         text_encoded, text_lengths = self.converter.encode(labels)
         max_length = max(text_lengths)
         text_padded = torch.zeros(len(text_encoded), max_length).long()
-        # for i, t in enumerate(text_encoded):
-        #     text_padded[i, :len(t)] = t
         text_padded = text_padded.to(self.device)
 
         input_lengths = torch.full(
@@ -164,10 +122,6 @@ class OCRModel(LightningModule):
 
         self.log("val_loss", loss, prog_bar=True)
 
-        # Log predictions for visualization
-        # if batch_idx % 50 == 0:
-        #     self._log_predictions(logits, labels, prefix='val')
-
         return loss
 
     def on_validation_epoch_end(self):
@@ -176,85 +130,29 @@ class OCRModel(LightningModule):
         pass
 
     def configure_optimizers(self):
-        optimizer = Adam(
-            [
-                {"params": self.backbone.parameters(), "lr": self.learning_rate * 0.1},
-                {"params": self.seq_module.parameters(), "lr": self.learning_rate},
-                {"params": self.pred_module.parameters(), "lr": self.learning_rate},
-            ],
-            weight_decay=self.weight_decay,
-        )
+        # Group parameters by module for different learning rates
+        param_groups = [
+            {"params": self.backbone.parameters(), "lr": self.learning_rate * 0.1},
+            {"params": self.seq_module.parameters(), "lr": self.learning_rate},
+            {"params": self.pred_module.parameters(), "lr": self.learning_rate},
+        ]
 
-        # scheduler = OneCycleLR(
-        #     optimizer,
-        #     max_lr=[self.learning_rate * 0.1, self.learning_rate, self.learning_rate],
-        #     epochs=self.trainer.max_epochs,
-        #     steps_per_epoch=len(self.train_dataloader),
-        #     pct_start=0.1,
-        #     div_factor=25,
-        #     final_div_factor=1000,
-        #     anneal_strategy='cos'
-        # )
+        # Use AdamW optimizer for better regularization
+        optimizer = torch.optim.AdamW(param_groups, weight_decay=self.weight_decay)
+
+        # Use CosineAnnealingWarmRestarts for better convergence
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=10,  # Number of iterations for the first restart
+            T_mult=2,  # A factor increases T_i after a restart
+            eta_min=1e-6,  # Minimum learning rate
+        )
 
         return {
             "optimizer": optimizer,
-            # "lr_scheduler": {
-            #     "scheduler": scheduler,
-            #     "interval": "step"
-            # }
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+                "frequency": 1,
+            },
         }
-
-
-def main():
-    # Initialize wandb logger
-    wandb_logger = WandbLogger(project="vietnamese-ocr", name="resnet18-bilstm-ctc")
-
-    # Initialize model
-    model = OCRModel(
-        backbone_name="resnet18",
-        seq_name="bilstm",
-        pred_name="ctc",
-        batch_size=64,
-        learning_rate=1e-3,
-        weight_decay=1e-5,
-        epochs=4,
-    )
-
-    # Initialize data module
-    data_module = OCRDataModule(
-        train_data_path="./training_images",
-        val_data_path="./training_images",
-        batch_size=64,
-        num_workers=4,
-    )
-
-    # Setup callbacks
-    checkpoint_callback = ModelCheckpoint(
-        dirpath="checkpoints",
-        filename="ocr-{epoch:02d}-{val_loss:.2f}",
-        monitor="val_loss",
-        mode="min",
-        save_top_k=1,
-        save_last=True,
-    )
-
-    lr_monitor = LearningRateMonitor(logging_interval="step")
-
-    # Initialize trainer
-    trainer = Trainer(
-        max_epochs=30,
-        accelerator="cuda",
-        devices=1,
-        logger=wandb_logger,
-        callbacks=[checkpoint_callback, lr_monitor],
-        gradient_clip_val=5.0,
-        accumulate_grad_batches=1,
-        log_every_n_steps=10,
-    )
-
-    # Start training
-    trainer.fit(model, data_module)
-
-
-if __name__ == "__main__":
-    main()
