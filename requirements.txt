@@ -2,7 +2,8 @@
 
 torch==2.5.1+cu121
 pytorch-lightning==2.4.0
-
-
 opencv-python
 wandb
+timm
+jsonargparse[signatures]>=4.27.7
+loguru

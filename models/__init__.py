@@ -1,26 +1,20 @@
+from .backbones import resnet18, resnet50
+from .seq_modules import BiLSTM
+from .pred_modules import CTC, Attention
 
 
+_backbone_factory = {"resnet18": resnet18, "resnet50": resnet50}
 
 
-_backbone_factory = {
-    'resnet18': resnet18,
-    'resnet50': resnet50
-}
+seq_factory = {"bilstm": BiLSTM}
 
 
-seq_factory = {
-    'bilstm': BiLSTM
-}
-
-
-pred_factory = {
-    'ctc': CTC,
-    'attn': Attention
-}
-
+pred_factory = {"ctc": CTC, "attn": Attention}
 
 
 def get_module(backbone_name, seq_name, pred_name):
+    print(f"backbone_name: {backbone_name}")
+    print(f"backbone_fac: {_backbone_factory}")
     if backbone_name not in _backbone_factory:
         raise ValueError(f"Backbone {backbone_name} not found")
     backbone = _backbone_factory[backbone_name]
