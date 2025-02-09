@@ -8,7 +8,12 @@ class OCRTrainingCLI(LightningCLI):
         pass
 
 def cli_main():
-    OCRTrainingCLI(OCRModel, OCRDataModule, seed_everything_default=42)
+    OCRTrainingCLI(
+        OCRModel, 
+        OCRDataModule,
+        save_config_kwargs={"overwrite": True},
+        seed_everything_default=42
+    )
 
 
 if __name__ == "__main__":
