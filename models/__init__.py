@@ -1,9 +1,9 @@
-from .backbones import resnet18, resnet50
+from .backbones import resnet18, resnet50, VGG
 from .seq_modules import BiLSTM
 from .pred_modules import CTC, Attention
 
 
-_backbone_factory = {"resnet18": resnet18, "resnet50": resnet50}
+_backbone_factory = {"resnet18": resnet18, "resnet50": resnet50, "vgg": VGG}
 
 
 seq_factory = {"bilstm": BiLSTM}

@@ -49,7 +49,7 @@ class OCRModel(LightningModule):
         )
 
         # Initialize backbone
-        self.backbone = backbone_cls()
+        self.backbone = backbone_cls(input_channels=3, output_channels=512)
 
         # Initialize sequence module if provided
         self.seq_module = None
@@ -62,8 +62,8 @@ class OCRModel(LightningModule):
 
         # Initialize prediction module
         input_dim = (
-            256 if self.seq_module else 512
-        )  # Use seq_module output size if exists, else backbone output size
+            256 if self.seq_module else 512  # channels from VGG output
+        )  # When no seq_module, use channel size from VGG
         self.pred_module = pred_module_cls(
             input_dim=input_dim,
             num_classes=len(self.vocab) + 1,  # Number of classes including blank token
@@ -133,11 +133,13 @@ class OCRModel(LightningModule):
         # Group parameters by module for different learning rates
         param_groups = [
             {"params": self.backbone.parameters(), "lr": self.learning_rate * 0.1},
-            {"params": self.seq_module.parameters(), "lr": self.learning_rate},
             {"params": self.pred_module.parameters(), "lr": self.learning_rate},
         ]
-
-        # Use AdamW optimizer for better regularization
+        
+        # Only add seq_module parameters if it exists
+        if self.seq_module:
+            param_groups.insert(1, {"params": self.seq_module.parameters(), "lr": self.learning_rate})
+            
         optimizer = torch.optim.AdamW(param_groups, weight_decay=self.weight_decay)
 
         # Use CosineAnnealingWarmRestarts for better convergence

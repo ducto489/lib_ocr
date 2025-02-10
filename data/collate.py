@@ -12,7 +12,7 @@ class OCRCollator:
         images, labels = zip(*batch)
 
         # Convert images to tensors and get their shapes
-        images = [self.to_tensor(img) for img in images]
+        # images = [self.to_tensor(img) for img in images]
         channels, height = images[0].shape[0], images[0].shape[1]
         widths = [img.shape[2] for img in images]
 

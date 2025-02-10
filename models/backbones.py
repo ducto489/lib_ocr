@@ -3,7 +3,7 @@ import timm
 
 
 class resnet50(nn.Module):
-    def __init__(self):
+    def __init__(self, input_channels, output_channels=512):
         super().__init__()
         backbone = timm.create_model("resnet50", pretrained=True)
         core = list(backbone.children())[:-2]
@@ -18,7 +18,7 @@ class resnet50(nn.Module):
 
 
 class resnet18(nn.Module):
-    def __init__(self):
+    def __init__(self, input_channels, output_channels=512):
         super().__init__()
         backbone = timm.create_model("resnet18", pretrained=True)
         core = list(backbone.children())[:-2]
@@ -30,3 +30,33 @@ class resnet18(nn.Module):
         x = self.AdaptiveAvgPool(x.permute(0, 3, 1, 2))
         x = x.squeeze(3)
         return x
+
+class VGG(nn.Module):
+    def __init__(self, input_channels, output_channels=512):
+        super().__init__()
+        self.output_channels = [int(output_channels/8), int(output_channels/4),
+                                int(output_channels/2), output_channels]  # 64, 128, 256, 512
+        self.ConvNet = nn.Sequential( # Input: 3 x 100 x 420
+            nn.Conv2d(input_channels, self.output_channels[0], 3,1,1), nn.ReLU(True),  # 64 x 100 x 420
+            nn.MaxPool2d(2,2), # 64 x 50 x 210
+            nn.Conv2d(self.output_channels[0], self.output_channels[1], 3,1,1), nn.ReLU(True),   # 128 x 50 x 210
+            nn.MaxPool2d(2,2), # 128 x 25 x 105
+            nn.Conv2d(self.output_channels[1], self.output_channels[2], 3,1,1), nn.ReLU(True),  # 256 x 25 x 105
+            nn.Conv2d(self.output_channels[2], self.output_channels[2], 3,1,1), nn.ReLU(True),  # 256 x 25 x 105
+            nn.MaxPool2d((2,1),(2,1)), # 256 x 12 x 105
+            nn.Conv2d(self.output_channels[2], self.output_channels[3], 3,1,1), nn.ReLU(True),  # 512 x 12 x 105
+            nn.BatchNorm2d(self.output_channels[3]), nn.ReLU(True),
+            nn.Conv2d(self.output_channels[3], self.output_channels[3], 3,1,1), nn.ReLU(True),  # 512 x 12 x 105
+            nn.BatchNorm2d(self.output_channels[3]), nn.ReLU(True),
+            nn.MaxPool2d((2,1),(2,1)), # 512 x 6 x 105
+            # nn.Conv2d(self.output_channels[3], self.output_channels[3], 2,1,0), nn.ReLU(True),  # 512 x 5 x 104
+            )
+        self.AdaptiveAvgPool = nn.AdaptiveAvgPool2d((None, 1))
+    
+    def forward(self, x):
+        conv = self.ConvNet(x)  # batch_size x 512 x 5 x 104
+        # Reshape to (batch_size, sequence_length, channels) for CTC
+        conv = conv.permute(0, 3, 1, 2)  # [b, w, c, h]
+        conv = self.AdaptiveAvgPool(conv)  # [b, w, c, 1]
+        conv = conv.squeeze(-1)  # [b, w, c]
+        return conv  # [batch_size, sequence_length, channels]
