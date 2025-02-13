@@ -10,5 +10,5 @@ python cli.py fit \
     --model.learning_rate 1e-3 \
     --trainer.max_epochs 30 \
     --trainer.logger WandbLogger \
-    --trainer.logger.name "Test_1"\
+    --trainer.logger.name "VGG-real-test"\
     --trainer.logger.project "OCR"

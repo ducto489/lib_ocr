@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 
 from data import OCRDataset
 from data.collate import OCRCollator
+from data.augmentations import data_transforms
 from loguru import logger
 
 
@@ -24,7 +25,7 @@ class OCRDataModule(LightningDataModule):
         self.collator = OCRCollator()
 
     def train_dataloader(self):
-        self.train_data = OCRDataset(self.train_data_path)
+        self.train_data = OCRDataset(self.train_data_path, transform=data_transforms["train"])
         return DataLoader(
             self.train_data,
             batch_size=self.batch_size,
@@ -33,7 +34,7 @@ class OCRDataModule(LightningDataModule):
         )
 
     def val_dataloader(self):
-        self.val_data = OCRDataset(self.val_data_path)
+        self.val_data = OCRDataset(self.val_data_path, transform=data_transforms["val"])
         return DataLoader(
             self.val_data,
             batch_size=self.batch_size,

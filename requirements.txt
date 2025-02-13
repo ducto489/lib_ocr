@@ -7,3 +7,4 @@ wandb
 timm
 jsonargparse[signatures]>=4.27.7
 loguru
+torchvision
