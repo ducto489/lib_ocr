@@ -1,5 +1,7 @@
 import torch
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class CTCLabelConverter:
     def __init__(self, vocab, device='cuda'):
         # Add blank token at position 0
@@ -119,6 +121,32 @@ class CTCLabelConverter_clovaai(object):
                     char_list.append(self.character[t[i]])
             text = "".join(char_list)
 
+            texts.append(text)
+        return texts
+
+
+class AttnLabelConverter:
+    def __init__(self, character):
+        list_token = ['[GO]', '[EOS]']
+        self.character = list_token + list(character)
+        self.dict = {char: idx for idx, char in enumerate(self.character)}
+
+    def encode(self, text, batch_max_length=50):
+        """convert text-label into text-index."""
+        length = [len(s) + 1 for s in text]
+        batch_max_length += 1
+        batch_text = torch.zeros(len(text), batch_max_length + 1).long()
+        for i, t in enumerate(text):
+            text = list(t)
+            text.append('[EOS]')
+            text = [self.dict[char] for char in text]
+            batch_text[i][1:1 + len(text)] = torch.LongTensor(text)
+        return (batch_text.to(device), torch.IntTensor(length).to(device))
+
+    def decode(self, text_index, length):
+        texts = []
+        for index, l in enumerate(length):
+            text = ''.join([self.character[i] for i in text_index[index, :]])
             texts.append(text)
         return texts
 

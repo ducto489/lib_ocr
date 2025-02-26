@@ -12,9 +12,10 @@ from models import get_module
 from dataloader import OCRDataModule
 
 ## CHECK VOCAB, CONVERTER AGAIN
-from utils import CTCLabelConverter_clovaai
+from utils import CTCLabelConverter_clovaai, AttnLabelConverter
 from data.vocab import Vocab
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class OCRModel(LightningModule):
     def __init__(
@@ -32,11 +33,17 @@ class OCRModel(LightningModule):
         self.pred_name = pred_name
         # self.vocab = 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~ '
         self.vocab = Vocab("./training_images/labels.json").get_vocab()
-        self.converter = CTCLabelConverter_clovaai(self.vocab, device="cuda")
+        if self.pred_name == "ctc":
+            self.converter = CTCLabelConverter_clovaai(self.vocab, device="cuda")
+        else:
+            self.converter = AttnLabelConverter(self.vocab)
         self._build_model()
 
         # TODO: add optimizer, scheduler, loss, metrics
-        self.loss = nn.CTCLoss(blank=0, zero_infinity=True)
+        if self.pred_name == "ctc":
+            self.loss = nn.CTCLoss(blank=0, zero_infinity=True)
+        else:
+            self.loss = nn.CrossEntropyLoss(ignore_index=0)
         self.metric = None
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -66,67 +73,70 @@ class OCRModel(LightningModule):
         )  # When no seq_module, use channel size from VGG
         self.pred_module = pred_module_cls(
             input_dim=input_dim,
-            num_classes=len(self.vocab) + 1,  # Number of classes including blank token
+            num_classes=len(self.converter.character) #len(self.vocab),  # Number of classes including blank token
         )
 
-    def forward(self, x):
+    def forward(self, x, text):
         x = self.backbone(x)
         if self.seq_module:
             x = self.seq_module(x)
-        x = self.pred_module(x)
+        x = self.pred_module(x, text=text, is_train=self.training)
         return x
 
     def training_step(self, batch, batch_idx):
         images = batch["images"]
         labels = batch["labels"]
-
         text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=50)
-
-        # Forward pass
-        logits = self(images)
-        # Prepare CTC input
-        log_probs = logits.log_softmax(2).permute(1, 0, 2)
-
-        # Calculate input lengths
-        preds_size = torch.IntTensor([logits.size(1)] * images.size(0))
-
-        # Calculate loss
-        loss = self.loss(log_probs, text_encoded, preds_size, text_lengths)
+        
+        if self.pred_name == "ctc":
+            # Forward pass
+            logits = self(images, text=text_encoded)
+            # Prepare CTC input
+            log_probs = logits.log_softmax(2).permute(1, 0, 2)
+            # Calculate input lengths
+            preds_size = torch.IntTensor([logits.size(1)] * images.size(0))
+            # Calculate loss
+            loss = self.loss(log_probs, text_encoded, preds_size, text_lengths)
+        else:
+            preds = self(images, text=text_encoded[:, :-1]).to(device)
+            target = text_encoded[:, 1:].to(device)
+            loss = self.loss(preds.view(-1, preds.shape[-1]), target.contiguous().view(-1))
 
         # Log metrics
         self.log("train_loss", loss, prog_bar=True)
-
         return loss
 
     def validation_step(self, batch, batch_idx):
-
         images = batch["images"]
         labels = batch["labels"]
 
-        logits = self(images)
-        log_probs = logits.log_softmax(2).permute(1, 0, 2)
+        text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=50)
 
-        text_encoded, text_lengths = self.converter.encode(labels)
-        max_length = max(text_lengths)
-        text_padded = torch.zeros(len(text_encoded), max_length).long()
-        text_padded = text_padded.to(self.device)
-
-        input_lengths = torch.full(
-            size=(logits.size(0),),
-            fill_value=logits.size(1),
-            dtype=torch.long,
-            device=self.device,
-        )
-
-        loss = self.loss(log_probs, text_padded, input_lengths, text_lengths)
+        if self.pred_name == "ctc":
+            # Forward pass
+            logits = self(images, text=text_encoded)
+            # Prepare CTC input
+            log_probs = logits.log_softmax(2).permute(1, 0, 2)
+            # Calculate input lengths
+            input_lengths = torch.full(
+                size=(logits.size(0),),
+                fill_value=logits.size(1),
+                dtype=torch.long,
+                device=self.device,
+            )
+            # Calculate loss
+            loss = self.loss(log_probs, text_encoded, input_lengths, text_lengths)
+        else:
+            # Attention model validation
+            preds = self(images, text=text_encoded[:, :-1]).to(device)
+            target = text_encoded[:, 1:].to(device)  # Shift target by 1 since we predict next char
+            loss = self.loss(preds.view(-1, preds.shape[-1]), target.contiguous().view(-1))
 
         self.log("val_loss", loss, prog_bar=True)
-
         return loss
 
     def on_validation_epoch_end(self):
         # TODO: log accumulated metrics -> CER > WER > SER
-
         pass
 
     def configure_optimizers(self):
@@ -142,12 +152,16 @@ class OCRModel(LightningModule):
             
         optimizer = torch.optim.AdamW(param_groups, weight_decay=self.weight_decay)
 
-        # Use CosineAnnealingWarmRestarts for better convergence
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        # Use OneCycleLR for better convergence
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
-            T_0=10,  # Number of iterations for the first restart
-            T_mult=2,  # A factor increases T_i after a restart
-            eta_min=1e-6,  # Minimum learning rate
+            max_lr=[self.learning_rate * 0.1, self.learning_rate] if not self.seq_module else [self.learning_rate * 0.1, self.learning_rate, self.learning_rate],
+            epochs=self.trainer.max_epochs,
+            steps_per_epoch=len(self.trainer.datamodule.train_dataloader()),
+            pct_start=0.1,  # Warm up for 10% of training
+            div_factor=10.0,  # Initial learning rate is max_lr/10
+            final_div_factor=1e4,  # Final learning rate is max_lr/10000
+            anneal_strategy='cos',
         )
 
         return {
