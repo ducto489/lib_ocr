@@ -6,6 +6,7 @@ import math
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+import pandas as pd
 
 
 class OCRDataset(Dataset):
@@ -13,22 +14,55 @@ class OCRDataset(Dataset):
         self.data_path = data_path
         self.transform = transform
 
-        self.tgt_path = os.path.join(data_path, 'labels.json')
-        with open(self.tgt_path, 'r') as f:
-            self.data = json.load(f)
-        self.data = self.data['labels']
-        self.data = [(image_name, label) for image_name, label in self.data.items()]
+        # Check for tgt.csv file
+        self.tgt_path = os.path.join(data_path, 'tgt.csv')
+        if not os.path.exists(self.tgt_path):
+            raise FileNotFoundError(f"Label file not found at {self.tgt_path}")
+        
+        # Try different encodings for Vietnamese text support
+        encodings = ['utf-8', 'utf-8-sig', 'utf-16']
+        for encoding in encodings:
+            try:
+                df = pd.read_csv(self.tgt_path, encoding=encoding)
+                break
+            except UnicodeDecodeError:
+                if encoding == encodings[-1]:
+                    raise UnicodeDecodeError(f"Failed to read CSV with encodings: {encodings}")
+                continue
+        
+        # Validate required columns
+        required_cols = ['image_name', 'label']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Missing required columns in CSV: {missing_cols}")
+        
+        # Convert values to strings and create data list
+        df['image_name'] = df['image_name'].astype(str)
+        df['label'] = df['label'].astype(str)
+        self.data = list(zip(df['image_name'], df['label']))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         image_name, label = self.data[idx]
-        image_path = os.path.join(self.data_path, 'images', image_name + ".jpg")
-        image = Image.open(image_path).convert('RGB')
-        # TODO: add online augmentation pipeline
+        image_path = os.path.join(self.data_path, 'images', image_name)
+        
+        # Check if image exists
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+            
+        try:
+            image = Image.open(image_path).convert('RGB')
+        except Exception as e:
+            raise IOError(f"Failed to load image {image_path}: {str(e)}")
+            
         if self.transform:
-            image = self.transform(image)
+            try:
+                image = self.transform(image)
+            except Exception as e:
+                raise RuntimeError(f"Transform failed for {image_path}: {str(e)}")
+                
         return image, label
 
 

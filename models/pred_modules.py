@@ -36,7 +36,7 @@ class Attention(nn.Module):
         onehot = onehot.scatter_(1, input_char, 1)
         return onehot
 
-    def forward(self, batch_H, text=None, is_train=True, batch_max_length=50):
+    def forward(self, batch_H, text=None, is_train=True, batch_max_length=200):
         batch_size = batch_H.size(0)
         num_steps = batch_max_length + 1
 

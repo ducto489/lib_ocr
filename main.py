@@ -31,8 +31,7 @@ class OCRModel(LightningModule):
         self.backbone_name = backbone_name if backbone_name is not None else "resnet18"
         self.seq_name = seq_name
         self.pred_name = pred_name
-        # self.vocab = 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~ '
-        self.vocab = Vocab("./training_images/labels.json").get_vocab()
+        self.vocab = Vocab("/hdd1t/mduc/data/train/tgt.csv").get_vocab_csv()
         if self.pred_name == "ctc":
             self.converter = CTCLabelConverter_clovaai(self.vocab, device="cuda")
         else:
@@ -48,6 +47,7 @@ class OCRModel(LightningModule):
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.weight_decay = weight_decay
+        self.batch_max_length = 200
 
     def _build_model(self):
         logger.info(f"{self.backbone_name}")
@@ -86,7 +86,7 @@ class OCRModel(LightningModule):
     def training_step(self, batch, batch_idx):
         images = batch["images"]
         labels = batch["labels"]
-        text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=50)
+        text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
         
         if self.pred_name == "ctc":
             # Forward pass
@@ -110,7 +110,7 @@ class OCRModel(LightningModule):
         images = batch["images"]
         labels = batch["labels"]
 
-        text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=50)
+        text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
 
         if self.pred_name == "ctc":
             # Forward pass
@@ -137,6 +137,15 @@ class OCRModel(LightningModule):
 
     def on_validation_epoch_end(self):
         # TODO: log accumulated metrics -> CER > WER > SER
+        # CER
+
+        # WER
+
+        # SER
+        pass
+
+    def evaluate(self, batch, batch_idx):
+        # TODO: implement evaluation
         pass
 
     def configure_optimizers(self):

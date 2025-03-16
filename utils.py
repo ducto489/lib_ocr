@@ -131,7 +131,7 @@ class AttnLabelConverter:
         self.character = list_token + list(character)
         self.dict = {char: idx for idx, char in enumerate(self.character)}
 
-    def encode(self, text, batch_max_length=50):
+    def encode(self, text, batch_max_length=200):
         """convert text-label into text-index."""
         length = [len(s) + 1 for s in text]
         batch_max_length += 1
