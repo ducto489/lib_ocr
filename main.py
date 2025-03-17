@@ -7,9 +7,11 @@ from torch import nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
 from loguru import logger
+from torchmetrics.text import CharErrorRate, WordErrorRate
 
 from models import get_module
 from dataloader import OCRDataModule
+from utils import SentenceErrorRate
 
 ## CHECK VOCAB, CONVERTER AGAIN
 from utils import CTCLabelConverter_clovaai, AttnLabelConverter
@@ -26,6 +28,7 @@ class OCRModel(LightningModule):
         batch_size: int = 64,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-5,
+        save_dir: str = "checkpoints",
     ):
         super().__init__()
         self.backbone_name = backbone_name if backbone_name is not None else "resnet18"
@@ -43,11 +46,19 @@ class OCRModel(LightningModule):
             self.loss = nn.CTCLoss(blank=0, zero_infinity=True)
         else:
             self.loss = nn.CrossEntropyLoss(ignore_index=0)
-        self.metric = None
+            
+        # Initialize metrics
+        self.cer = CharErrorRate()
+        self.wer = WordErrorRate()
+        self.ser = SentenceErrorRate()
+        self.val_predictions = []
+        self.val_targets = []
+        
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.weight_decay = weight_decay
         self.batch_max_length = 200
+        self.save_dir = save_dir
 
     def _build_model(self):
         logger.info(f"{self.backbone_name}")
@@ -126,24 +137,61 @@ class OCRModel(LightningModule):
             )
             # Calculate loss
             loss = self.loss(log_probs, text_encoded, input_lengths, text_lengths)
+            
+            # Get predictions for metrics
+            preds = log_probs.argmax(2).permute(1, 0).detach().cpu()
+            pred_texts = self.converter.decode(preds)
+            
         else:
             # Attention model validation
             preds = self(images, text=text_encoded[:, :-1]).to(device)
             target = text_encoded[:, 1:].to(device)  # Shift target by 1 since we predict next char
             loss = self.loss(preds.view(-1, preds.shape[-1]), target.contiguous().view(-1))
+            
+            # Get predictions for metrics
+            pred_size = torch.IntTensor([preds.size(1)] * preds.size(0))
+            _, pred_index = preds.max(2)
+            pred_texts = self.converter.decode(pred_index, pred_size)
+
+        # Store predictions and targets for epoch end metrics
+        self.val_predictions.extend(pred_texts)
+        self.val_targets.extend(labels)
 
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
+    def on_train_epoch_end(self):
+        # Save model after each training epoch
+        epoch = self.current_epoch
+        save_path = f"{self.save_dir}/model_train_epoch_{epoch}.ckpt"
+        self.trainer.save_checkpoint(save_path)
+        logger.info(f"Saved model checkpoint after training epoch {epoch} to {save_path}")
+
+    def on_validation_epoch_start(self):
+        # Reset stored predictions and targets
+        self.val_predictions = []
+        self.val_targets = []
+
     def on_validation_epoch_end(self):
-        # TODO: log accumulated metrics -> CER > WER > SER
-        # CER
+        # Calculate and log CER
+        cer = self.cer(self.val_predictions, self.val_targets)
+        self.log("val_cer", cer, prog_bar=True)
+        logger.info(f"Validation CER: {cer:.4f}")
 
-        # WER
+        # Calculate and log WER
+        wer = self.wer(self.val_predictions, self.val_targets)
+        self.log("val_wer", wer, prog_bar=True)
+        logger.info(f"Validation WER: {wer:.4f}")
+        
+        # Calculate and log SER
+        ser = self.ser(self.val_predictions, self.val_targets)
+        self.log("val_ser", ser, prog_bar=True)
+        logger.info(f"Validation SER: {ser:.4f}")
 
-        # SER
-        pass
-
+        # Clear predictions and targets
+        self.val_predictions = []
+        self.val_targets = []
+        
     def evaluate(self, batch, batch_idx):
         # TODO: implement evaluation
         pass

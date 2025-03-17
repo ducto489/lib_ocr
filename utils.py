@@ -1,4 +1,5 @@
 import torch
+from torchmetrics import Metric
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -167,6 +168,33 @@ def test_ctc_label_converter_clovaai():
     print("Original:", text)
     print("Encoded:", text_index)
     print("Decoded:", converter.decode(text_index, length))
+
+class SentenceErrorRate(Metric):
+    """Custom metric to compute Sentence Error Rate (SER).
+    SER is the percentage of sentences that contain any errors."""
+    
+    def __init__(self):
+        super().__init__()
+        self.add_state("incorrect", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+        
+    def update(self, preds: list, target: list):
+        """Update state with predictions and targets.
+        
+        Args:
+            preds: List of predicted sentences
+            target: List of target sentences
+        """
+        assert len(preds) == len(target), "Number of predictions and targets must match"
+        
+        # Count sentences with any errors
+        incorrect = sum(1 for p, t in zip(preds, target) if p != t)
+        self.incorrect += torch.tensor(incorrect)
+        self.total += torch.tensor(len(preds))
+        
+    def compute(self):
+        """Compute the sentence error rate."""
+        return self.incorrect.float() / self.total
 
 if __name__ == "__main__":
     test_ctc_label_converter(text = ["hello ", "world"])

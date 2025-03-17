@@ -1,4 +1,8 @@
 # images
+label_analysis/
+analyze_labels.py
+label_distribution.png
+
 training_images/images
 training_images/labels.json
 debug/
