@@ -29,6 +29,7 @@ class OCRModel(LightningModule):
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-5,
         save_dir: str = "checkpoints",
+        batch_max_length: int = 50,
     ):
         super().__init__()
         self.backbone_name = backbone_name if backbone_name is not None else "resnet18"
@@ -57,7 +58,7 @@ class OCRModel(LightningModule):
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.weight_decay = weight_decay
-        self.batch_max_length = 200
+        self.batch_max_length = batch_max_length
         self.save_dir = save_dir
 
     def _build_model(self):
@@ -91,7 +92,7 @@ class OCRModel(LightningModule):
         x = self.backbone(x)
         if self.seq_module:
             x = self.seq_module(x)
-        x = self.pred_module(x, text=text, is_train=self.training)
+        x = self.pred_module(x, text=text, is_train=self.training, batch_max_length=self.batch_max_length)
         return x
 
     def training_step(self, batch, batch_idx):

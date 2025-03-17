@@ -10,9 +10,10 @@ import pandas as pd
 
 
 class OCRDataset(Dataset):
-    def __init__(self, data_path, transform=None):
+    def __init__(self, data_path, transform=None, batch_max_length=50):
         self.data_path = data_path
         self.transform = transform
+        self.batch_max_length = batch_max_length
 
         # Check for tgt.csv file
         self.tgt_path = os.path.join(data_path, 'tgt.csv')
@@ -36,9 +37,17 @@ class OCRDataset(Dataset):
         if missing_cols:
             raise ValueError(f"Missing required columns in CSV: {missing_cols}")
         
-        # Convert values to strings and create data list
+        # Convert values to strings and filter by length
         df['image_name'] = df['image_name'].astype(str)
         df['label'] = df['label'].astype(str)
+        
+        # Filter out samples exceeding batch_max_length
+        total_samples = len(df)
+        df = df[df['label'].str.len() <= batch_max_length]
+        filtered_samples = total_samples - len(df)
+        if filtered_samples > 0:
+            print(f"Filtered out {filtered_samples} samples ({filtered_samples/total_samples*100:.2f}%) exceeding max length {batch_max_length}")
+            
         self.data = list(zip(df['image_name'], df['label']))
 
     def __len__(self):

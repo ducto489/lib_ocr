@@ -14,6 +14,7 @@ class OCRDataModule(LightningDataModule):
         val_data_path: str = "./validation_images/",
         batch_size: int = 32,
         num_workers: int = 4,
+        batch_max_length: int = 50,
     ):
         logger.debug(f"{train_data_path=}")
         logger.debug(f"{val_data_path=}")
@@ -22,10 +23,15 @@ class OCRDataModule(LightningDataModule):
         self.val_data_path = val_data_path
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.batch_max_length = batch_max_length
         self.collator = OCRCollator()
 
     def train_dataloader(self):
-        self.train_data = OCRDataset(self.train_data_path, transform=data_transforms["train"])
+        self.train_data = OCRDataset(
+            self.train_data_path, 
+            transform=data_transforms["train"],
+            batch_max_length=self.batch_max_length
+        )
         return DataLoader(
             self.train_data,
             batch_size=self.batch_size,
@@ -34,7 +40,11 @@ class OCRDataModule(LightningDataModule):
         )
 
     def val_dataloader(self):
-        self.val_data = OCRDataset(self.val_data_path, transform=data_transforms["val"])
+        self.val_data = OCRDataset(
+            self.val_data_path, 
+            transform=data_transforms["val"],
+            batch_max_length=self.batch_max_length
+        )
         return DataLoader(
             self.val_data,
             batch_size=self.batch_size,
