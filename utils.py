@@ -1,5 +1,9 @@
 import torch
 from torchmetrics import Metric
+import time
+import logging
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, Callback
+from loguru import logger
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -195,6 +199,45 @@ class SentenceErrorRate(Metric):
     def compute(self):
         """Compute the sentence error rate."""
         return self.incorrect.float() / self.total
+
+class TimeBasedValidationCallback(Callback):
+    """
+    Callback to run validation after a specified time interval.
+    
+    Attributes:
+        validation_interval: Time in hours between validations.
+        last_validation_time: Time of the last validation in seconds.
+    """
+    def __init__(self, validation_interval=4):
+        """
+        Args:
+            validation_interval: Time in hours between validations.
+        """
+        super().__init__()
+        self.validation_interval = validation_interval * 3600  # Convert to seconds
+        self.last_validation_time = None
+
+    def on_train_start(self, trainer, pl_module):
+        self.last_validation_time = time.time()
+        logger.info(f"TimeBasedValidationCallback: Starting time-based validation every {self.validation_interval/3600:.1f} hours")
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        current_time = time.time()
+        # Check if enough time has passed since last validation
+        if self.last_validation_time is not None and (current_time - self.last_validation_time) >= self.validation_interval:
+            logger.info(f"TimeBasedValidationCallback: Running validation after {self.validation_interval/3600:.1f} hours")
+            # Run validation
+            trainer.validate(model=pl_module, datamodule=trainer.datamodule)
+            # Save checkpoint after validation
+            epoch = trainer.current_epoch
+            step = trainer.global_step
+            val_loss = trainer.callback_metrics.get("val_loss", 0)
+            val_cer = trainer.callback_metrics.get("val_cer", 0)
+            checkpoint_path = f"{pl_module.save_dir}/model_time_val_epoch_{epoch}_step_{step}_loss_{val_loss:.4f}_cer_{val_cer:.4f}.ckpt"
+            trainer.save_checkpoint(checkpoint_path)
+            logger.info(f"TimeBasedValidationCallback: Saved checkpoint to {checkpoint_path}")
+            self.last_validation_time = current_time
+
 
 if __name__ == "__main__":
     test_ctc_label_converter(text = ["hello ", "world"])

@@ -1,5 +1,4 @@
 from pytorch_lightning import LightningModule
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import WandbLogger
 import torch
@@ -13,7 +12,6 @@ from models import get_module
 from dataloader import OCRDataModule
 from utils import SentenceErrorRate
 
-## CHECK VOCAB, CONVERTER AGAIN
 from utils import CTCLabelConverter_clovaai, AttnLabelConverter
 from data.vocab import Vocab
 
@@ -188,6 +186,13 @@ class OCRModel(LightningModule):
         ser = self.ser(self.val_predictions, self.val_targets)
         self.log("val_ser", ser, prog_bar=True)
         logger.info(f"Validation SER: {ser:.4f}")
+
+        # Save model after validation with metrics in filename
+        epoch = self.current_epoch
+        val_loss = self.trainer.callback_metrics.get("val_loss", 0)
+        save_path = f"{self.save_dir}/model_val_epoch_{epoch}_loss_{val_loss:.4f}_cer_{cer:.4f}_wer_{wer:.4f}.ckpt"
+        self.trainer.save_checkpoint(save_path)
+        logger.info(f"Saved model checkpoint after validation epoch {epoch} to {save_path}")
 
         # Clear predictions and targets
         self.val_predictions = []

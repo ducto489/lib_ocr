@@ -8,6 +8,7 @@ training_images/labels.json
 debug/
 lightning_logs/
 wandb/
+checkpoints/
 
 config.yaml
 note.md

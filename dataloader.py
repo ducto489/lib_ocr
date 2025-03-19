@@ -18,6 +18,10 @@ class OCRDataModule(LightningDataModule):
     ):
         logger.debug(f"{train_data_path=}")
         logger.debug(f"{val_data_path=}")
+        logger.debug(f"{batch_size=}")
+        logger.debug(f"{num_workers=}")
+        logger.debug(f"{batch_max_length=}")
+        
         super().__init__()
         self.train_data_path = train_data_path
         self.val_data_path = val_data_path
@@ -36,6 +40,7 @@ class OCRDataModule(LightningDataModule):
             self.train_data,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            pin_memory=True,
             collate_fn=self.collator,
         )
 
@@ -49,5 +54,6 @@ class OCRDataModule(LightningDataModule):
             self.val_data,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            pin_memory=True,
             collate_fn=self.collator,
         )
