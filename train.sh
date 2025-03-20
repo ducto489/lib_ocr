@@ -3,8 +3,8 @@
 python cli.py fit \
     --data.train_data_path "/hdd1t/mduc/data/train" \
     --data.val_data_path "/hdd1t/mduc/data/val" \
-    --data.batch_size 32 \
-    --data.num_workers 12 \
+    --data.batch_size 16 \
+    --data.num_workers 4 \
     --model.backbone_name "resnet18" \
     --model.seq_name "bilstm" \
     --model.pred_name "attn" \

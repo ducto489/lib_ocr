@@ -216,6 +216,7 @@ class TimeBasedValidationCallback(Callback):
         super().__init__()
         self.validation_interval = validation_interval * 3600  # Convert to seconds
         self.last_validation_time = None
+        self._running_validation = False
 
     def on_train_start(self, trainer, pl_module):
         self.last_validation_time = time.time()
@@ -224,22 +225,40 @@ class TimeBasedValidationCallback(Callback):
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         current_time = time.time()
         # Check if enough time has passed since last validation
-        if self.last_validation_time is not None and (current_time - self.last_validation_time) >= self.validation_interval:
+        if (self.last_validation_time is not None and 
+            (current_time - self.last_validation_time) >= self.validation_interval and 
+            not self._running_validation):  # Only proceed if not already running validation
+            
             logger.info(f"TimeBasedValidationCallback: Running validation after {self.validation_interval/3600:.1f} hours")
-            # Run validation
-            trainer.validate(model=pl_module, datamodule=trainer.datamodule)
-            # Save checkpoint after validation
-            epoch = trainer.current_epoch
-            step = trainer.global_step
-            val_loss = trainer.callback_metrics.get("val_loss", 0)
-            val_cer = trainer.callback_metrics.get("val_cer", 0)
-            checkpoint_path = f"{pl_module.save_dir}/model_time_val_epoch_{epoch}_step_{step}_loss_{val_loss:.4f}_cer_{val_cer:.4f}.ckpt"
-            trainer.save_checkpoint(checkpoint_path)
-            logger.info(f"TimeBasedValidationCallback: Saved checkpoint to {checkpoint_path}")
-            self.last_validation_time = current_time
+            
+            # Set flag to avoid nested validation calls
+            self._running_validation = True
+            
+            try:
+                # Save current logger connector state
+                logger_connector = trainer._logger_connector
+                first_loop_iter_state = getattr(logger_connector, "_first_loop_iter", None)
+                
+                # Run validation - this will reset some internal states
+                trainer.validate(model=pl_module, datamodule=trainer.datamodule)
+                
+                # Restore logger connector state to avoid assertion errors
+                if hasattr(logger_connector, "_first_loop_iter") and first_loop_iter_state is not None:
+                    logger_connector._first_loop_iter = first_loop_iter_state
+                
+                # Save checkpoint after validation
+                epoch = trainer.current_epoch
+                step = trainer.global_step
+                val_loss = trainer.callback_metrics.get("val_loss", 0)
+                val_cer = trainer.callback_metrics.get("val_cer", 0)
+                checkpoint_path = f"{pl_module.save_dir}/model_time_val_epoch_{epoch}_step_{step}_loss_{val_loss:.4f}_cer_{val_cer:.4f}.ckpt"
+                trainer.save_checkpoint(checkpoint_path)
+                logger.info(f"TimeBasedValidationCallback: Saved checkpoint to {checkpoint_path}")
+            finally:
+                # Make sure we always reset the flag
+                self._running_validation = False
+                self.last_validation_time = current_time
 
 
 if __name__ == "__main__":
     test_ctc_label_converter(text = ["hello ", "world"])
-
-    
