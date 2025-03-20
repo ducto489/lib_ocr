@@ -208,7 +208,7 @@ class TimeBasedValidationCallback(Callback):
         validation_interval: Time in hours between validations.
         last_validation_time: Time of the last validation in seconds.
     """
-    def __init__(self, validation_interval=4):
+    def __init__(self, validation_interval=4.0):
         """
         Args:
             validation_interval: Time in hours between validations.

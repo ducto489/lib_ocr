@@ -43,6 +43,7 @@ class OCRDataModule(LightningDataModule):
             pin_memory=True,
             collate_fn=self.collator,
             persistent_workers=True,
+            shuffle=True
         )
 
     def val_dataloader(self):
