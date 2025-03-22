@@ -1,6 +1,5 @@
 from pytorch_lightning.cli import LightningCLI
 from main import OCRModel
-from utils import TimeBasedValidationCallback
 from dataloader import OCRDataModule
 import os
 
@@ -19,11 +18,6 @@ class OCRTrainingCLI(LightningCLI):
         # Create checkpoint directory if it doesn't exist
         save_dir = self.config.get("save_dir", "checkpoints")
         os.makedirs(save_dir, exist_ok=True)
-        
-        # Add time-based validation callback
-        time_validation_callback = TimeBasedValidationCallback(validation_interval=self.config.get("validation_interval", 4.0))
-        self.trainer.callbacks.append(time_validation_callback)
-
 
 def cli_main():
     OCRTrainingCLI(

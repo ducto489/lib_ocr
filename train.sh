@@ -10,10 +10,9 @@ python cli.py fit \
     --model.pred_name "attn" \
     --model.learning_rate 1e-3 \
     --model.batch_max_length 50 \
-    --validation_interval 4.0 \ #TODO: Fix argument parsing in lightning cli
     --model.save_dir "checkpoints/run50" \
     --trainer.max_epochs 10 \
-    --trainer.check_val_every_n_epoch 1 \
+    --trainer.val_check_interval 0.2 \
     --trainer.logger WandbLogger \
     --trainer.logger.name "train-50"\
     --trainer.logger.project "OCR"\
