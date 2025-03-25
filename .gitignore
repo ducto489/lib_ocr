@@ -1,3 +1,5 @@
+notebook/
+images/
 # images
 label_analysis/
 analyze_labels.py
@@ -186,3 +188,4 @@ cython_debug/
 
 # Checkpoint
 *.ckpt
+images/dog/dog_2.jpg

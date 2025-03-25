@@ -14,41 +14,9 @@ class OCRDataset(Dataset):
         self.data_path = data_path
         self.transform = transform
         self.batch_max_length = batch_max_length
-
-        # Check for tgt.csv file
-        self.tgt_path = os.path.join(data_path, 'tgt.csv')
-        if not os.path.exists(self.tgt_path):
-            raise FileNotFoundError(f"Label file not found at {self.tgt_path}")
         
-        # Try different encodings for Vietnamese text support
-        encodings = ['utf-8', 'utf-8-sig', 'utf-16']
-        for encoding in encodings:
-            try:
-                df = pd.read_csv(self.tgt_path, encoding=encoding)
-                break
-            except UnicodeDecodeError:
-                if encoding == encodings[-1]:
-                    raise UnicodeDecodeError(f"Failed to read CSV with encodings: {encodings}")
-                continue
-        
-        # Validate required columns
-        required_cols = ['image_name', 'label']
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        if missing_cols:
-            raise ValueError(f"Missing required columns in CSV: {missing_cols}")
-        
-        # Convert values to strings and filter by length
-        df['image_name'] = df['image_name'].astype(str)
-        df['label'] = df['label'].astype(str)
-        
-        # Filter out samples exceeding batch_max_length
-        total_samples = len(df)
-        df = df[df['label'].str.len() <= batch_max_length]
-        filtered_samples = total_samples - len(df)
-        if filtered_samples > 0:
-            print(f"Filtered out {filtered_samples} samples ({filtered_samples/total_samples*100:.2f}%) exceeding max length {batch_max_length}")
-            
-        self.data = list(zip(df['image_name'], df['label']))
+        images, labels = process_tgt(data_path, batch_max_length)
+        self.data = list(zip(images, labels)) #list(zip(df['image_name'], df['label']))
 
     def __len__(self):
         return len(self.data)
@@ -177,3 +145,39 @@ class AlignCollate(object):
             image_tensors = torch.cat([t.unsqueeze(0) for t in image_tensors], 0)
 
         return image_tensors, labels
+    
+def process_tgt(data_path, batch_max_length):
+        # Check for tgt.csv file
+    tgt_path = os.path.join(data_path, 'tgt.csv')
+    if not os.path.exists(tgt_path):
+        raise FileNotFoundError(f"Label file not found at {tgt_path}")
+    
+    # Try different encodings for Vietnamese text support
+    encodings = ['utf-8', 'utf-8-sig', 'utf-16']
+    for encoding in encodings:
+        try:
+            df = pd.read_csv(tgt_path, encoding=encoding)
+            break
+        except UnicodeDecodeError:
+            if encoding == encodings[-1]:
+                raise UnicodeDecodeError(f"Failed to read CSV with encodings: {encodings}")
+            continue
+    
+    # Validate required columns
+    required_cols = ['image_name', 'label']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns in CSV: {missing_cols}")
+    
+    # Convert values to strings and filter by length
+    df['image_name'] = df['image_name'].astype(str)
+    df['label'] = df['label'].astype(str)
+    
+    # Filter out samples exceeding batch_max_length
+    total_samples = len(df)
+    df = df[df['label'].str.len() <= batch_max_length]
+    filtered_samples = total_samples - len(df)
+    if filtered_samples > 0:
+        print(f"Filtered out {filtered_samples} samples ({filtered_samples/total_samples*100:.2f}%) exceeding max length {batch_max_length}")
+        
+    return list(df['image_name']), list(df['label'])

@@ -1,6 +1,6 @@
 from pytorch_lightning.cli import LightningCLI
 from main import OCRModel
-from dataloader import OCRDataModule
+from dataloader import OCRDataModule, DALI_OCRDataModule
 import os
 
 
@@ -22,11 +22,10 @@ class OCRTrainingCLI(LightningCLI):
 def cli_main():
     OCRTrainingCLI(
         OCRModel, 
-        OCRDataModule,
+        DALI_OCRDataModule,
         save_config_kwargs={"overwrite": True},
         seed_everything_default=42
     )
-
 
 if __name__ == "__main__":
     cli_main()

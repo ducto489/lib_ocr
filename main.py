@@ -9,7 +9,7 @@ from loguru import logger
 from torchmetrics.text import CharErrorRate, WordErrorRate
 
 from models import get_module
-from dataloader import OCRDataModule
+from dataloader import OCRDataModule, DALI_OCRDataModule
 from utils import SentenceErrorRate
 
 from utils import CTCLabelConverter_clovaai, AttnLabelConverter
