@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from data import OCRDataset
 from data.collate import OCRCollator
 from data.augmentations import data_transforms
-from data.dataset import process_tgt 
+from data.dataset import process_tgt
 from loguru import logger
 
 from nvidia.dali.pipeline import pipeline_def
@@ -26,7 +26,7 @@ class OCRDataModule(LightningDataModule):
         logger.debug(f"{batch_size=}")
         logger.debug(f"{num_workers=}")
         logger.debug(f"{batch_max_length=}")
-        
+
         super().__init__()
         self.train_data_path = train_data_path
         self.val_data_path = val_data_path
@@ -37,7 +37,7 @@ class OCRDataModule(LightningDataModule):
 
     def train_dataloader(self):
         self.train_data = OCRDataset(
-            self.train_data_path, 
+            self.train_data_path,
             transform=data_transforms["train"],
             batch_max_length=self.batch_max_length
         )
@@ -53,7 +53,7 @@ class OCRDataModule(LightningDataModule):
 
     def val_dataloader(self):
         self.val_data = OCRDataset(
-            self.val_data_path, 
+            self.val_data_path,
             transform=data_transforms["val"],
             batch_max_length=self.batch_max_length
         )
@@ -80,7 +80,7 @@ class DALI_OCRDataModule(LightningDataModule):
         logger.debug(f"{batch_size=}")
         logger.debug(f"{num_workers=}")
         logger.debug(f"{batch_max_length=}")
-        
+
         super().__init__()
         self.train_data_path = train_data_path
         self.val_data_path = val_data_path
@@ -92,26 +92,26 @@ class DALI_OCRDataModule(LightningDataModule):
 
     @pipeline_def(num_threads=4, batch_size=32)
     def get_dali_train_pipeline(self):
-        images = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, random_shuffle=True, name="Reader")
+        images, indices = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, labels=list(range(len(self.train_images_names))), random_shuffle=True, name="Reader")
         images = fn.resize(images, resize_y=100, device="mixed")
         images = fn.normalize(images, scale=64, shift=128, dtype=types.UINT8)
-        return images, self.labels
-    
+        return images, indices
+
     @pipeline_def(num_threads=4, batch_size=32)
     def get_dali_val_pipeline(self):
-        images = fn.readers.file(file_root=self.val_data_path, files=self.val_images_names, random_shuffle=False, name="Reader")
+        images, indices = fn.readers.file(file_root=self.val_data_path, files=self.val_images_names, labels=list(range(len(self.val_images_names))), random_shuffle=False, name="Reader")
         images = fn.resize(images, resize_y=100, device="mixed")
         images = fn.normalize(images, scale=64, shift=128, dtype=types.UINT8)
-        return images, self.val_labels
-    
-    def train_dataloader(self):        
+        return images, indices
+
+    def train_dataloader(self):
         return DALIGenericIterator(
             [self.get_dali_train_pipeline()],
-            ["image", "label"],
+            ["images", "indices"],
         )
-    
+
     def val_dataloader(self):
         return DALIGenericIterator(
             [self.get_dali_val_pipeline()],
-            ["image", "label"],
+            ["images", "indices"],
         )
