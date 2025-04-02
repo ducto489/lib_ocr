@@ -6,7 +6,7 @@ from data.collate import OCRCollator
 from data.augmentations import data_transforms
 from data.dataset import process_tgt
 from loguru import logger
-
+import os
 from nvidia.dali.pipeline import pipeline_def
 import nvidia.dali.types as types
 import nvidia.dali.fn as fn
@@ -90,13 +90,16 @@ class DALI_OCRDataModule(LightningDataModule):
         self.train_images_names, self.train_labels = process_tgt(self.train_data_path, batch_max_length=self.batch_max_length)
         self.val_images_names, self.val_labels = process_tgt(self.val_data_path, batch_max_length=self.batch_max_length)
         self.steps_per_epoch = len(self.train_images_names) // self.batch_size
+        self.train_data_path = os.path.join(self.train_data_path, "images")
+        self.val_data_path = os.path.join(self.val_data_path, "images")
 
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
     def get_dali_train_pipeline(self):
         images, indices = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, labels=list(range(len(self.train_images_names))), random_shuffle=True, name="Reader")
         images = fn.decoders.image(images, device="mixed")
         images = fn.resize(images, resize_y=100) 
-        images = fn.normalize(images, scale=64, shift=128, dtype=types.UINT8)
+        images = fn.normalize(images, dtype=types.UINT8)
+        images = fn.pad(images, fill_value=0)
         return images, indices
 
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
@@ -104,7 +107,8 @@ class DALI_OCRDataModule(LightningDataModule):
         images, indices = fn.readers.file(file_root=self.val_data_path, files=self.val_images_names, labels=list(range(len(self.val_images_names))), random_shuffle=False, name="Reader")
         images = fn.decoders.image(images, device="mixed")
         images = fn.resize(images, resize_y=100) 
-        images = fn.normalize(images, scale=64, shift=128, dtype=types.UINT8)
+        images = fn.normalize(images, dtype=types.UINT8)
+        images = fn.pad(images, fill_value=0)
         return images, indices
 
     def train_dataloader(self):
