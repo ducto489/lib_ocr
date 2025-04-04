@@ -1,5 +1,6 @@
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
+from nvidia.dali.plugin.pytorch import DALIClassificationIterator
 
 from data import OCRDataset
 from data.collate import OCRCollator
@@ -66,6 +67,18 @@ class OCRDataModule(LightningDataModule):
             persistent_workers=True,
         )
 
+class Wrapper(DALIGenericIterator):
+    def __init__(self, dataset_size: int, *args, **kwargs):
+        """Wrapper to have dataset size.
+
+        Args:
+            dataset_size (int): number of samples in the dataset.
+        """
+
+        super().__init__(*args, **kwargs)
+        self.dataset_size = dataset_size
+
+# Add __next__ or __getitem__ method to DALIGenericIterator
 class DALI_OCRDataModule(LightningDataModule):
     def __init__(
         self,
@@ -93,6 +106,25 @@ class DALI_OCRDataModule(LightningDataModule):
         self.train_data_path = os.path.join(self.train_data_path, "images")
         self.val_data_path = os.path.join(self.val_data_path, "images")
 
+    def setup(self, stage=None):
+        train_pipeline = self.get_dali_train_pipeline()
+        val_pipeline = self.get_dali_val_pipeline()
+        train_pipeline.build()
+        val_pipeline.build()
+        class LightningWrapper(DALIClassificationIterator):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            def __next__(self):
+                data = super().__next__()
+                return data[0]["images"], data[0]["indices"]
+            
+            def __code__(self):
+                return super().__code__()
+            
+        self.train_dataloader = LightningWrapper(train_pipeline, reader_name="Reader")
+        self.val_dataloader = LightningWrapper(val_pipeline, reader_name="Reader")
+
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
     def get_dali_train_pipeline(self):
         images, indices = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, labels=list(range(len(self.train_images_names))), random_shuffle=True, name="Reader")
@@ -100,6 +132,7 @@ class DALI_OCRDataModule(LightningDataModule):
         images = fn.resize(images, resize_y=100) 
         images = fn.normalize(images, dtype=types.UINT8)
         images = fn.pad(images, fill_value=0)
+        indices = indices.gpu()
         return images, indices
 
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
@@ -109,16 +142,22 @@ class DALI_OCRDataModule(LightningDataModule):
         images = fn.resize(images, resize_y=100) 
         images = fn.normalize(images, dtype=types.UINT8)
         images = fn.pad(images, fill_value=0)
+        indices = indices.gpu()
         return images, indices
 
     def train_dataloader(self):
-        return DALIGenericIterator(
-            [self.get_dali_train_pipeline()],
-            ["images", "indices"],
-        )
-
+        return self.train_dataloader
+    
     def val_dataloader(self):
-        return DALIGenericIterator(
-            [self.get_dali_val_pipeline()],
-            ["images", "indices"],
-        )
+        return self.val_dataloader
+    # def train_dataloader(self):
+    #     return DALIGenericIterator(
+    #         [self.get_dali_train_pipeline()],
+    #         ["images", "indices"],
+    #     )
+
+    # def val_dataloader(self):
+    #     return DALIGenericIterator(
+    #         [self.get_dali_val_pipeline()],
+    #         ["images", "indices"],
+    #     )
