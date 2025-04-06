@@ -1,7 +1,6 @@
 from pytorch_lightning.cli import LightningCLI
 from main import OCRModel
-from test import DALI_OCRDataModule
-# from dataloader import OCRDataModule, DALI_OCRDataModule
+from dataloader import OCRDataModule, DALI_OCRDataModule
 import os
 
 

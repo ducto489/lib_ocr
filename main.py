@@ -117,8 +117,10 @@ class OCRModel(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        images = batch["images"]
-        labels = batch["labels"]
+        logger.debug(f"{batch=}")
+        logger.debug(f"{batch_idx=}")
+        images = batch[0]
+        labels = batch[1]
 
         text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
 
