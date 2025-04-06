@@ -6,6 +6,8 @@ from data import OCRDataset
 from data.collate import OCRCollator
 from data.augmentations import data_transforms
 from data.dataset import process_tgt
+from utils import AttnLabelConverter, CTCLabelConverter
+from data.vocab import Vocab
 from loguru import logger
 import os
 from nvidia.dali.pipeline import pipeline_def
@@ -98,6 +100,7 @@ class DALI_OCRDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 4,
         batch_max_length: int = 50,
+        pred_name: str = "attn",
     ):
         logger.debug(f"{train_data_path=}")
         logger.debug(f"{val_data_path=}")
@@ -111,8 +114,20 @@ class DALI_OCRDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.batch_max_length = batch_max_length
+
+        logger.debug("Get Vocab")
+        vocab = Vocab("/hdd1t/mduc/data/train/tgt.csv").get_vocab_csv()
+        if pred_name=="ctc":
+            converter = CTCLabelConverter(vocab)
+        else:
+            converter = AttnLabelConverter(vocab)
+        logger.debug("Processing tgt.csv file")
         self.train_images_names, self.train_labels = process_tgt(self.train_data_path, batch_max_length=self.batch_max_length)
         self.val_images_names, self.val_labels = process_tgt(self.val_data_path, batch_max_length=self.batch_max_length)
+        logger.debug("Done! Now encode the labels")
+        self.train_labels = converter.encode(self.train_labels, batch_max_length=self.batch_max_length)
+        self.val_labels = converter.encode(self.val_labels, batch_max_length=self.batch_max_length)
+        logger.debug("Done!")
         self.steps_per_epoch = len(self.train_images_names) // self.batch_size
         self.train_data_path = os.path.join(self.train_data_path, "images")
         self.val_data_path = os.path.join(self.val_data_path, "images")
@@ -158,7 +173,7 @@ class DALI_OCRDataModule(LightningDataModule):
 
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
     def get_dali_val_pipeline(self):
-        images, indices = fn.readers.file(file_root=self.val_data_path, files=self.val_images_names, labels=list(range(len(self.val_images_names))), random_shuffle=False, name="Reader")
+        images, indices = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, labels=list(range(len(self.val_labels))), random_shuffle=False, name="Reader")
         images = fn.decoders.image(images, device="mixed")
         images = fn.resize(images, resize_y=100) 
         images = fn.normalize(images, dtype=types.FLOAT)

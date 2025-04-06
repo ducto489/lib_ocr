@@ -12,6 +12,7 @@ class OCRTrainingCLI(LightningCLI):
         parser.add_argument("--save_dir", type=str, default="checkpoints",
                           help="Directory to save checkpoints")
         parser.link_arguments('model.batch_max_length', 'data.batch_max_length')
+        parser.link_arguments('model.pred_name', 'data.pred_name')
 
     def before_fit(self):
         #TODO: Fix argument parsing in lightning cli
