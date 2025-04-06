@@ -151,7 +151,7 @@ class DALI_OCRDataModule(LightningDataModule):
         images, indices = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, labels=list(range(len(self.train_images_names))), random_shuffle=True, name="Reader")
         images = fn.decoders.image(images, device="mixed")
         images = fn.resize(images, resize_y=100) 
-        images = fn.normalize(images, dtype=types.UINT8)
+        images = fn.normalize(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = indices.gpu()
         return images, indices
@@ -161,7 +161,7 @@ class DALI_OCRDataModule(LightningDataModule):
         images, indices = fn.readers.file(file_root=self.val_data_path, files=self.val_images_names, labels=list(range(len(self.val_images_names))), random_shuffle=False, name="Reader")
         images = fn.decoders.image(images, device="mixed")
         images = fn.resize(images, resize_y=100) 
-        images = fn.normalize(images, dtype=types.UINT8)
+        images = fn.normalize(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = indices.gpu()
         return images, indices
