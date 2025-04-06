@@ -1,8 +1,8 @@
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
-from nvidia.dali.plugin.pytorch import DALIClassificationIterator
+from nvidia.dali.plugin.pytorch import DALIClassificationIterator, LastBatchPolicy
 
-from data import OCRDataset
+from data import OCRDataset, DALI_OCRDataset
 from data.collate import OCRCollator
 from data.augmentations import data_transforms
 from data.dataset import process_tgt
@@ -78,7 +78,6 @@ class Wrapper(DALIGenericIterator):
         super().__init__(*args, **kwargs)
         self.dataset_size = dataset_size
 
-# Add __next__ or __getitem__ method to DALIGenericIterator
 class DALI_OCRDataModule(LightningDataModule):
     def __init__(
         self,
@@ -111,19 +110,60 @@ class DALI_OCRDataModule(LightningDataModule):
         val_pipeline = self.get_dali_val_pipeline()
         train_pipeline.build()
         val_pipeline.build()
+        logger.debug(f"{val_pipeline=}")
         class LightningWrapper(DALIClassificationIterator):
-            def __init__(self, *args, **kwargs):
+            def __init__(self, dataset_size, *args, **kwargs):
                 super().__init__(*args, **kwargs)
+                self.dataset_size = dataset_size
+
+            def __len__(self):
+                return self.dataset_size
 
             def __next__(self):
-                data = super().__next__()
-                return data[0]["images"], data[0]["indices"]
+                batch = super().__next__()[0]
+                print(batch)
+                x, target = batch["data"], batch["label"]
+                target = target.squeeze(-1).long()
+                x = x.detach().clone()
+                target = target.detach().clone()
+                return x, target
+            
+            def __getitem__(self, idx):
+                return self.__next__()
             
             def __code__(self):
-                return super().__code__()
+                return super().__code()
             
-        self.train_dataloader = LightningWrapper(train_pipeline, reader_name="Reader")
-        self.val_dataloader = LightningWrapper(val_pipeline, reader_name="Reader")
+        self.train_dataloader = LightningWrapper(
+            pipelines=train_pipeline, 
+            reader_name="Reader", 
+            dataset_size=self.steps_per_epoch,
+            auto_reset=True,
+            last_batch_policy=LastBatchPolicy.DROP
+        )
+        self.val_dataloader = LightningWrapper(
+            pipelines=val_pipeline, 
+            reader_name="Reader", 
+            dataset_size=len(self.val_images_names) // self.batch_size,
+            auto_reset=True,
+            last_batch_policy=LastBatchPolicy.DROP
+        )
+        for meta_data in self.val_dataloader:
+            # print(meta_data[0]["data"].shape)
+            logger.debug(f"{meta_data=}")
+            break
+        logger.debug(f"{self.val_dataloader=}")
+        logger.debug("iter: ", iter(self.val_dataloader))
+
+    @classmethod
+    def train_dataloader(self):
+        return self.train_dataloader
+    
+    @classmethod
+    def val_dataloader(self):
+        logger.debug(f"{self.val_dataloader=}")
+        # logger.debug("iter: ", iter(self.val_dataloader))
+        return self.val_dataloader
 
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
     def get_dali_train_pipeline(self):
@@ -145,19 +185,14 @@ class DALI_OCRDataModule(LightningDataModule):
         indices = indices.gpu()
         return images, indices
 
-    def train_dataloader(self):
-        return self.train_dataloader
-    
-    def val_dataloader(self):
-        return self.val_dataloader
-    # def train_dataloader(self):
-    #     return DALIGenericIterator(
-    #         [self.get_dali_train_pipeline()],
-    #         ["images", "indices"],
-    #     )
 
-    # def val_dataloader(self):
-    #     return DALIGenericIterator(
-    #         [self.get_dali_val_pipeline()],
-    #         ["images", "indices"],
-    #     )
+
+if __name__ == '__main__':
+    data = DALI_OCRDataModule
+    data.__init__
+    x = data.val_dataloader()
+    print(x)
+    for meta_data in x:
+            # print(meta_data[0]["data"].shape)
+            logger.debug(f"{meta_data=}")
+            break
