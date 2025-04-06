@@ -120,9 +120,9 @@ class OCRModel(LightningModule):
         logger.debug(f"{batch=}")
         logger.debug(f"{batch_idx=}")
         images = batch[0]
-        labels = batch[1]
+        text_encoded = batch[1]
 
-        text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
+        # text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
 
         if self.pred_name == "ctc":
             # Forward pass

@@ -14,6 +14,7 @@ from nvidia.dali.pipeline import pipeline_def
 import nvidia.dali.types as types
 import nvidia.dali.fn as fn
 from nvidia.dali.plugin.pytorch import DALIGenericIterator
+from PIL import Image
 
 class OCRDataModule(LightningDataModule):
     def __init__(
@@ -70,27 +71,87 @@ class OCRDataModule(LightningDataModule):
         )
 
 class LightningWrapper(DALIClassificationIterator):
-            def __init__(self, dataset_size, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.dataset_size = dataset_size
+    def __init__(self, dataset_size, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataset_size = dataset_size
 
-            def __len__(self):
-                return self.dataset_size
+    def __len__(self):
+        return self.dataset_size
 
-            def __next__(self):
-                batch = super().__next__()[0]
-                print(batch)
-                x, target = batch["data"], batch["label"]
-                target = target.squeeze(-1).long()
-                x = x.detach().clone()
-                target = target.detach().clone()
-                return x, target
+    def __next__(self):
+        batch = super().__next__()[0]
+        print(batch)
+        x, target = batch["data"], batch["label"]
+        target = target.squeeze(-1).long()
+        x = x.detach().clone()
+        target = target.detach().clone()
+        return x, target
+    
+    def __getitem__(self, idx):
+        return self.__next__()
+    
+    def __code__(self):
+        return super().__code()
             
-            def __getitem__(self, idx):
-                return self.__next__()
-            
-            def __code__(self):
-                return super().__code()
+class ExternalInputCallable:
+    def __init__(self, steps_per_epoch, data_path, converter, images_names, lebels,transform=None, batch_max_length=50):
+        self.data_path = data_path
+        self.transform = transform
+        self.batch_max_length = batch_max_length
+        self.steps_per_epoch = steps_per_epoch
+        self.converter = converter
+
+        self.images_names = images_names, 
+        self.lebels = lebels
+
+        self.data = list(zip(images_names, lebels))
+
+    def __call__(self, idx):
+        # idx = sample_info.idx_in_epoch
+        if idx >= self.steps_per_epoch:
+            # Indicate end of the epoch
+            raise StopIteration()
+
+        original_idx = idx
+        max_retries = 10  # Limit retries to avoid infinite loops
+        retries = 0
+        
+        while retries < max_retries:
+            try:
+                image_name, label = self.data[idx]
+                image_path = os.path.join(self.data_path, image_name)
+                
+                # Check if image exists
+                if not os.path.exists(image_path):
+                    raise FileNotFoundError(f"Image not found: {image_path}")
+                    
+                # Use PIL's Image.open with error handling for truncated images
+                try:
+                    image = Image.open(image_path).convert('RGB')
+                except (OSError, IOError) as e:
+                    print(f"Warning: Skipping corrupted image {image_path}: {str(e)}")
+                    idx = (idx + 1) % len(self.data)  # Try next image
+                    retries += 1
+                    continue
+                
+                # if self.transform:
+                #     try:
+                #         image = self.transform(image)
+                #     except Exception as e:
+                #         print(f"Transform failed for {image_path}: {str(e)}")
+                #         idx = (idx + 1) % len(self.data)  # Try next image
+                #         retries += 1
+                #         continue
+                label, _ = self.converter.encode(label)
+                return image, label
+                
+            except (IOError, FileNotFoundError) as e:
+                print(f"Error loading image at index {idx}: {str(e)}")
+                idx = (idx + 1) % len(self.data)  # Try next image
+                retries += 1
+        
+        # If we've tried max_retries times and still failed, raise an exception
+        raise RuntimeError(f"Failed to load a valid image after {max_retries} attempts starting from index {original_idx}")
 
 class DALI_OCRDataModule(LightningDataModule):
     def __init__(
@@ -118,16 +179,16 @@ class DALI_OCRDataModule(LightningDataModule):
         logger.debug("Get Vocab")
         vocab = Vocab("/hdd1t/mduc/data/train/tgt.csv").get_vocab_csv()
         if pred_name=="ctc":
-            converter = CTCLabelConverter(vocab)
+            self.converter = CTCLabelConverter(vocab, device="cpu")
         else:
-            converter = AttnLabelConverter(vocab)
+            self.converter = AttnLabelConverter(vocab)
         logger.debug("Processing tgt.csv file")
         self.train_images_names, self.train_labels = process_tgt(self.train_data_path, batch_max_length=self.batch_max_length)
         self.val_images_names, self.val_labels = process_tgt(self.val_data_path, batch_max_length=self.batch_max_length)
-        logger.debug("Done! Now encode the labels")
-        self.train_labels = converter.encode(self.train_labels, batch_max_length=self.batch_max_length)
-        self.val_labels = converter.encode(self.val_labels, batch_max_length=self.batch_max_length)
         logger.debug("Done!")
+        # self.train_labels = converter.encode(self.train_labels, batch_max_length=self.batch_max_length)
+        # self.val_labels = converter.encode(self.val_labels, batch_max_length=self.batch_max_length)
+        # logger.debug("Done!")
         self.steps_per_epoch = len(self.train_images_names) // self.batch_size
         self.train_data_path = os.path.join(self.train_data_path, "images")
         self.val_data_path = os.path.join(self.val_data_path, "images")
@@ -140,7 +201,7 @@ class DALI_OCRDataModule(LightningDataModule):
             
         self.train_dataloader = LightningWrapper(
             pipelines=train_pipeline, 
-            reader_name="Reader", 
+            # reader_name="Reader", 
             dataset_size=self.steps_per_epoch,
             auto_reset=True,
             last_batch_policy=LastBatchPolicy.DROP
@@ -154,16 +215,39 @@ class DALI_OCRDataModule(LightningDataModule):
         logger.debug("Val DALI pipelines built.")
         self.val_dataloader = LightningWrapper(
             pipelines=val_pipeline, 
-            reader_name="Reader", 
+            # reader_name="Reader", 
             dataset_size=len(self.val_images_names) // self.batch_size,
             auto_reset=True,
             last_batch_policy=LastBatchPolicy.DROP
         )
         return self.val_dataloader
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0)
+    # @pipeline_def(num_threads=4, batch_size=32, device_id=0)
+    # def get_dali_train_pipeline(self):
+    #     images, indices = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, labels=list(range(len(self.train_images_names))), random_shuffle=True, name="Reader")
+    #     images = fn.decoders.image(images, device="mixed")
+    #     images = fn.resize(images, resize_y=100) 
+    #     images = fn.normalize(images, dtype=types.FLOAT)
+    #     images = fn.pad(images, fill_value=0)
+    #     indices = indices.gpu()
+    #     return images, indices
+
+    @pipeline_def(num_threads=4, batch_size=16, device_id=0)
     def get_dali_train_pipeline(self):
-        images, indices = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, labels=list(range(len(self.train_images_names))), random_shuffle=True, name="Reader")
+        # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
+        images, indices = fn.external_source(
+            source=ExternalInputCallable(
+                steps_per_epoch = self.steps_per_epoch,
+                data_path = self.train_data_path,
+                converter = self.converter,
+                transform=data_transforms["train"],
+                batch_max_length=self.batch_max_length,
+                images_names = self.val_images_names, 
+                lebels = self.val_labels
+            ),
+            num_outputs=2,
+            dtype=[types.INT32, types.INT32],
+        )
         images = fn.decoders.image(images, device="mixed")
         images = fn.resize(images, resize_y=100) 
         images = fn.normalize(images, dtype=types.FLOAT)
@@ -171,9 +255,22 @@ class DALI_OCRDataModule(LightningDataModule):
         indices = indices.gpu()
         return images, indices
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0)
+    @pipeline_def(num_threads=4, batch_size=16, device_id=0)
     def get_dali_val_pipeline(self):
-        images, indices = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, labels=list(range(len(self.val_labels))), random_shuffle=False, name="Reader")
+        # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
+        images, indices = fn.external_source(
+            source=ExternalInputCallable(
+                steps_per_epoch = self.steps_per_epoch,
+                data_path = self.val_data_path,
+                converter = self.converter,
+                transform=data_transforms["val"],
+                batch_max_length=self.batch_max_length,
+                images_names = self.val_images_names, 
+                lebels = self.val_labels
+            ),
+            num_outputs=2,
+            dtype=[types.INT32, types.INT32],
+        )
         images = fn.decoders.image(images, device="mixed")
         images = fn.resize(images, resize_y=100) 
         images = fn.normalize(images, dtype=types.FLOAT)

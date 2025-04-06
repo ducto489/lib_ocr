@@ -131,9 +131,10 @@ class CTCLabelConverter_clovaai(object):
 
 
 class AttnLabelConverter:
-    def __init__(self, character):
+    def __init__(self, character, device="cuda"):
         list_token = ['[GO]', '[EOS]']
         self.character = list_token + list(character)
+        self.device = device
         self.dict = {char: idx for idx, char in enumerate(self.character)}
 
     def encode(self, text, batch_max_length=50):
@@ -146,7 +147,7 @@ class AttnLabelConverter:
             text.append('[EOS]')
             text = [self.dict[char] for char in text]
             batch_text[i][1:1 + len(text)] = torch.LongTensor(text)
-        return (batch_text.to(device), torch.IntTensor(length).to(device))
+        return (batch_text.to(self.device), torch.IntTensor(length).to(self.device))
 
     def decode(self, text_index, length):
         texts = []
