@@ -154,7 +154,7 @@ class ExternalInputCallable:
                         encoded_label, _ = self.converter.encode(label)
                         
                         batch_images.append(image)
-                        batch_labels.append(encoded_label)
+                        batch_labels.append(encoded_label.contiguous())
                         success = True
                         
                     except (OSError, IOError) as e:
@@ -268,15 +268,18 @@ class DALI_OCRDataModule(LightningDataModule):
                 batch_size=self.batch_size
             ),
             num_outputs=2,
+            batch=True,
+            parallel=False,
             dtype=[types.FLOAT, types.INT32],
         )
         # images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         # images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
         # images = fn.normalize(images, dtype=types.FLOAT)
         images = images.gpu()
+        indices = indices.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
-        indices = indices.gpu()
+        indices = fn.pad(indices, fill_value=0)
         return images, indices
 
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
@@ -294,6 +297,8 @@ class DALI_OCRDataModule(LightningDataModule):
                 batch_size=self.batch_size
             ),
             num_outputs=2,
+            batch=True,
+            parallel=False,
             dtype=[types.FLOAT, types.INT32],
         )
         # images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
