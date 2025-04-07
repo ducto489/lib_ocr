@@ -16,4 +16,5 @@ python cli.py fit \
     --trainer.logger WandbLogger \
     --trainer.logger.name "real-train-50"\
     --trainer.logger.project "OCR"\
-    --trainer.log_every_n_steps 16
+    --trainer.log_every_n_steps 16\
+    --trainer.num_sanity_val_steps 0

@@ -75,8 +75,9 @@ class OCRDataModule(LightningDataModule):
         )
 
 class LightningWrapper(DALIGenericIterator):
-    def __init__(self, dataset_size, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, pipelines, dataset_size, *args, **kwargs):
+        super().__init__(pipelines = pipelines, *args, **kwargs)
+        self.pipelines = pipelines
         self.dataset_size = dataset_size
 
     def __len__(self):
@@ -199,7 +200,7 @@ class DALI_OCRDataModule(LightningDataModule):
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
         train_pipeline = self.get_dali_train_pipeline(batch_size=self.batch_size)
-        train_pipeline.build()
+        # train_pipeline.build()
         logger.debug("Train DALI pipelines built.")
         # self.train_dataloader = DALIClassificationIterator(
         #     pipelines=train_pipeline,
@@ -213,6 +214,7 @@ class DALI_OCRDataModule(LightningDataModule):
             auto_reset=True,
             last_batch_policy=LastBatchPolicy.DROP
         )
+        self.train_dataloader.pipelines.schedule_run()
         return self.train_dataloader
     
     def val_dataloader(self):
@@ -253,8 +255,8 @@ class DALI_OCRDataModule(LightningDataModule):
                 converter = self.converter,
                 transform=data_transforms["train"],
                 batch_max_length=self.batch_max_length,
-                images_names = self.val_images_names, 
-                labels = self.val_labels,
+                images_names = self.train_images_names, 
+                labels = self.train_labels,
                 batch_size=self.batch_size
             ),
             num_outputs=3,
@@ -278,7 +280,7 @@ class DALI_OCRDataModule(LightningDataModule):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
             source=ExternalInputCallable(
-                steps_per_epoch = self.steps_per_epoch,
+                steps_per_epoch = len(self.val_images_names) // self.batch_size,
                 data_path = self.val_data_path,
                 converter = self.converter,
                 transform=data_transforms["val"],

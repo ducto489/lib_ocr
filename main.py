@@ -93,6 +93,13 @@ class OCRModel(LightningModule):
         x = self.pred_module(x, text=text, is_train=self.training, batch_max_length=self.batch_max_length)
         return x
 
+    def on_train_epoch_start(self):
+        logger.debug("Run the train_dataloader")
+        self.trainer.datamodule.train_dataloader.run()
+
+    def on_val_epoch_start(self):
+        self.trainer.datamodule.val_dataloader.run()
+
     def training_step(self, batch, batch_idx):
 
         images = batch[0]
