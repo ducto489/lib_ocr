@@ -84,16 +84,18 @@ class LightningWrapper(DALIClassificationIterator):
         batch = super().__next__()[0]
         # logger.debug(f"{len(batch)=}")
         x, target = batch["data"], batch["label"]
+        # From DALI to Torchvision format
+        x = x.permute(0, 3, 1, 2)
         # target = target.squeeze(-1).int()
         x = x.detach().clone()
         target = target.detach().clone()
         return x, target
     
-    def __getitem__(self, idx):
-        return self.__next__()
+    # def __getitem__(self, idx):
+    #     return self.__next__()
     
-    def __code__(self):
-        return super().__code()
+    # def __code__(self):
+    #     return super().__code()
             
 class ExternalInputCallable:
     def __init__(self, steps_per_epoch, data_path, converter, images_names, lebels, transform=None, batch_max_length=50, batch_size=32):
@@ -109,70 +111,56 @@ class ExternalInputCallable:
 
         self.data = list(zip(images_names, lebels))
 
-    def __call__(self, start_idx):
+    def __call__(self, sample_info):
         # idx = sample_info.idx_in_epoch
-        if start_idx >= self.steps_per_epoch:
+        idx = sample_info.idx_in_epoch
+        if idx >= self.steps_per_epoch:
             # Indicate end of the epoch
             raise StopIteration()
-
-        # Prepare batch containers
-        batch_images = []
-        batch_labels = []
         
-        # Process one batch
-        for i in range(self.batch_size):
-            idx = start_idx + i
-            if idx >= len(self.data):
-                break  # Don't exceed the dataset size
+        max_retries = 5
+        retries = 0
+        success = False
+        
+        while not success and retries < max_retries:
+            try:
+                image_name, label = self.data[idx % len(self.data)]
+                image_path = os.path.join(self.data_path, image_name)
                 
-            max_retries = 5
-            retries = 0
-            success = False
-            
-            while not success and retries < max_retries:
-                try:
-                    image_name, label = self.data[idx % len(self.data)]
-                    image_path = os.path.join(self.data_path, image_name)
+                if not os.path.exists(image_path):
+                    raise FileNotFoundError(f"Image not found: {image_path}")
                     
-                    if not os.path.exists(image_path):
-                        raise FileNotFoundError(f"Image not found: {image_path}")
-                        
-                    try:
-                        # image = Image.open(image_path).convert('RGB')
-                        # image = np.fromfile(image_path, dtype=np.uint8)
-                        # image = mx.image.imread(image_path, 1)
-                        image = decode_image(image_path, mode='RGB').contiguous()
+                try:
+                    # image = Image.open(image_path).convert('RGB')
+                    image = np.fromfile(image_path, dtype=np.uint8)
+                    # image = mx.image.imread(image_path, 1)
+                    # image = decode_image(image_path, mode='RGB').contiguous()
 
-                        if self.transform:
-                            try:
-                                image = self.transform(image)
-                            except Exception as e:
-                                print(f"Transform failed: {str(e)}")
-                                raise
+                    # if self.transform:
+                    #     try:
+                    #         image = self.transform(image)
+                    #     except Exception as e:
+                    #         print(f"Transform failed: {str(e)}")
+                    #         raise
 
-                        # image = image.numpy()
-                        encoded_label, _ = self.converter.encode(label)
-                        
-                        batch_images.append(image)
-                        batch_labels.append(encoded_label.contiguous())
-                        success = True
-                        
-                    except (OSError, IOError) as e:
-                        print(f"Warning: Skipping corrupted image {image_path}: {str(e)}")
-                        idx = (idx + 1) % len(self.data)
-                        retries += 1
-                        
-                except (IOError, FileNotFoundError) as e:
-                    print(f"Error loading image at index {idx}: {str(e)}")
+                    # image = image.numpy()
+                    encoded_label, _ = self.converter.encode(label)
+                    success = True
+                    
+                except (OSError, IOError) as e:
+                    print(f"Warning: Skipping corrupted image {image_path}: {str(e)}")
                     idx = (idx + 1) % len(self.data)
                     retries += 1
-            
-            if not success:
-                raise RuntimeError(f"Failed to load a valid image after {max_retries} attempts starting from index {start_idx}")
-                
-        logger.debug(f"Batch size: {len(batch_images)}")
+                    
+            except (IOError, FileNotFoundError) as e:
+                print(f"Error loading image at index {idx}: {str(e)}")
+                idx = (idx + 1) % len(self.data)
+                retries += 1
         
-        return batch_images, batch_labels
+        if not success:
+            raise RuntimeError(f"Failed to load a valid image after {max_retries} attempts starting from index {idx}")
+        
+        return image, encoded_label
 
 class DALI_OCRDataModule(LightningDataModule):
     def __init__(
@@ -220,7 +208,11 @@ class DALI_OCRDataModule(LightningDataModule):
         train_pipeline = self.get_dali_train_pipeline(batch_size=self.batch_size)
         train_pipeline.build()
         logger.debug("Train DALI pipelines built.")
-            
+        # self.train_dataloader = DALIClassificationIterator(
+        #     pipelines=train_pipeline,
+        #     auto_reset=True,
+        # )
+
         self.train_dataloader = LightningWrapper(
             pipelines=train_pipeline, 
             # reader_name="Reader", 
@@ -235,6 +227,10 @@ class DALI_OCRDataModule(LightningDataModule):
         val_pipeline = self.get_dali_val_pipeline(batch_size=self.batch_size)
         val_pipeline.build()
         logger.debug("Val DALI pipelines built.")
+        # self.val_dataloader = DALIClassificationIterator(
+        #     pipelines=val_pipeline,
+        #     auto_reset=True,
+        # )
         self.val_dataloader = LightningWrapper(
             pipelines=val_pipeline, 
             dataset_size=len(self.val_images_names) // self.batch_size,
@@ -268,14 +264,14 @@ class DALI_OCRDataModule(LightningDataModule):
                 batch_size=self.batch_size
             ),
             num_outputs=2,
-            batch=True,
+            batch=False,
             parallel=False,
-            dtype=[types.FLOAT, types.INT32],
+            dtype=[types.UINT8, types.INT64],
         )
-        # images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
-        # images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
-        # images = fn.normalize(images, dtype=types.FLOAT)
-        images = images.gpu()
+        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
+        images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
+        images = fn.normalize(images, dtype=types.FLOAT)
+        # images = images.gpu()
         indices = indices.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
@@ -297,17 +293,18 @@ class DALI_OCRDataModule(LightningDataModule):
                 batch_size=self.batch_size
             ),
             num_outputs=2,
-            batch=True,
+            batch=False,
             parallel=False,
-            dtype=[types.FLOAT, types.INT32],
+            dtype=[types.UINT8, types.INT64],
         )
-        # images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
-        # images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
-        # images = fn.normalize(images, dtype=types.FLOAT)
-        images = images.gpu()
+        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
+        images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
+        images = fn.normalize(images, dtype=types.FLOAT)
+        # images = images.gpu()
+        indices = indices.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
-        indices = indices.gpu()
+        indices = fn.pad(indices, fill_value=0)
         return images, indices
 
 if __name__ == '__main__':

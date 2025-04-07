@@ -38,7 +38,7 @@ class CTCLabelConverter:
         # Create padded tensor
         max_length = max(lengths)
         batch_size = len(texts)
-        batch_tensor = torch.zeros(batch_size, max_length).int()
+        batch_tensor = torch.zeros(batch_size, max_length).long()
         
         for i, text_encoded in enumerate(encoded):
             batch_tensor[i, :len(text_encoded)] = torch.tensor(text_encoded)
@@ -105,12 +105,12 @@ class CTCLabelConverter_clovaai(object):
         length = [len(s) for s in text]
 
         # The index used for padding (=0) would not affect the CTC loss calculation.
-        batch_text = torch.IntTensor(len(text), batch_max_length).fill_(0)
+        batch_text = torch.LongTensor(len(text), batch_max_length).fill_(0)
         for i, t in enumerate(text):
             text = list(t)
             text = [self.dict[char] for char in text]
-            batch_text[i][: len(text)] = torch.IntTensor(text)
-        return (batch_text.to(self.device), torch.IntTensor(length).to(self.device))
+            batch_text[i][: len(text)] = torch.LongTensor(text)
+        return (batch_text.to(self.device), torch.LongTensor(length).to(self.device))
 
     def decode(self, text_index, length):
         """convert text-index into text-label."""
@@ -141,13 +141,13 @@ class AttnLabelConverter:
         """convert text-label into text-index."""
         length = [len(s) + 1 for s in text]
         batch_max_length += 1
-        batch_text = torch.zeros(len(text), batch_max_length + 1).int()
+        batch_text = torch.zeros(len(text), batch_max_length + 1).long()
         for i, t in enumerate(text):
             text = list(t)
             text.append('[EOS]')
             text = [self.dict[char] for char in text]
-            batch_text[i][1:1 + len(text)] = torch.IntTensor(text)
-        return (batch_text.to(self.device), torch.IntTensor(length).to(self.device))
+            batch_text[i][1:1 + len(text)] = torch.LongTensor(text)
+        return (batch_text.to(self.device), torch.LongTensor(length).to(self.device))
 
     def decode(self, text_index, length):
         texts = []

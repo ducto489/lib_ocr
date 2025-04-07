@@ -94,9 +94,9 @@ class OCRModel(LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        images = batch["images"]
-        labels = batch["labels"]
-        text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
+        images = batch[0]
+        text_encoded = batch[1]
+        # text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
         
         if self.pred_name == "ctc":
             # Forward pass
@@ -104,7 +104,7 @@ class OCRModel(LightningModule):
             # Prepare CTC input
             log_probs = logits.log_softmax(2).permute(1, 0, 2)
             # Calculate input lengths
-            preds_size = torch.IntTensor([logits.size(1)] * images.size(0))
+            preds_size = torch.LongTensor([logits.size(1)] * images.size(0))
             # Calculate loss
             loss = self.loss(log_probs, text_encoded, preds_size, text_lengths)
         else:
@@ -117,11 +117,11 @@ class OCRModel(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        logger.debug(f"{batch=}")
-        logger.debug(f"{batch_idx=}")
+        # logger.debug(f"{batch_idx=}")
         images = batch[0]
         text_encoded = batch[1]
-
+        logger.debug(f"{images.size()=}")
+        logger.debug(f"{text_encoded.size()=}")
         # text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
 
         if self.pred_name == "ctc":
@@ -133,7 +133,7 @@ class OCRModel(LightningModule):
             input_lengths = torch.full(
                 size=(logits.size(0),),
                 fill_value=logits.size(1),
-                dtype=torch.int,
+                dtype=torch.long,
                 device=self.device,
             )
             # Calculate loss
@@ -150,7 +150,7 @@ class OCRModel(LightningModule):
             loss = self.loss(preds.view(-1, preds.shape[-1]), target.contiguous().view(-1))
             
             # Get predictions for metrics
-            pred_size = torch.IntTensor([preds.size(1)] * preds.size(0))
+            pred_size = torch.LongTensor([preds.size(1)] * preds.size(0))
             _, pred_index = preds.max(2)
             pred_texts = self.converter.decode(pred_index, pred_size)
 
