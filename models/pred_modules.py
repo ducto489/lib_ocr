@@ -56,7 +56,7 @@ class Attention(nn.Module):
         else:
             # Inference mode or when text is not provided
             probs = torch.zeros(batch_size, num_steps, self.num_classes, dtype=torch.float32, device=device)
-            target = torch.zeros(batch_size, dtype=torch.long, device=device)
+            target = torch.zeros(batch_size, dtype=torch.int, device=device)
             for i in range(num_steps):
                 char_onehots = self._char_to_onehot(target)
                 hidden = self.attention_cell(hidden, batch_H, char_onehots)

@@ -133,7 +133,7 @@ class OCRModel(LightningModule):
             input_lengths = torch.full(
                 size=(logits.size(0),),
                 fill_value=logits.size(1),
-                dtype=torch.long,
+                dtype=torch.int,
                 device=self.device,
             )
             # Calculate loss
