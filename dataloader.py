@@ -17,6 +17,7 @@ from nvidia.dali.plugin.pytorch import DALIGenericIterator
 from PIL import Image
 import numpy as np
 from torchvision.io import decode_image
+import torch
 
 class OCRDataModule(LightningDataModule):
     def __init__(
@@ -26,6 +27,7 @@ class OCRDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 4,
         batch_max_length: int = 50,
+        pred_name: str = "attn"
     ):
         logger.debug(f"{train_data_path=}")
         logger.debug(f"{val_data_path=}")
@@ -72,7 +74,7 @@ class OCRDataModule(LightningDataModule):
             persistent_workers=True,
         )
 
-class LightningWrapper(DALIClassificationIterator):
+class LightningWrapper(DALIGenericIterator):
     def __init__(self, dataset_size, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.dataset_size = dataset_size
@@ -83,22 +85,24 @@ class LightningWrapper(DALIClassificationIterator):
     def __next__(self):
         batch = super().__next__()[0]
         # logger.debug(f"{len(batch)=}")
-        x, target = batch["data"], batch["label"]
+        x, target, length = batch["data"], batch["label"], batch["length"]
+        # logger.debug(f"{target.size()=}")
         # From DALI to Torchvision format
         x = x.permute(0, 3, 1, 2)
         # target = target.squeeze(-1).int()
         x = x.detach().clone()
         target = target.detach().clone()
-        return x, target
+        # logger.debug(f"{target.size()=}")
+        return x, target, length
     
     # def __getitem__(self, idx):
     #     return self.__next__()
     
-    # def __code__(self):
-    #     return super().__code()
+    def __code__(self):
+        return super().__code()
             
-class ExternalInputCallable:
-    def __init__(self, steps_per_epoch, data_path, converter, images_names, lebels, transform=None, batch_max_length=50, batch_size=32):
+class ExternalInputCallable(object):
+    def __init__(self, steps_per_epoch, data_path, converter, images_names, labels, transform=None, batch_max_length=50, batch_size=32):
         self.data_path = data_path
         self.transform = transform
         self.batch_max_length = batch_max_length
@@ -107,9 +111,9 @@ class ExternalInputCallable:
         self.batch_size = batch_size
 
         self.images_names = images_names
-        self.lebels = lebels
+        self.labels = labels
 
-        self.data = list(zip(images_names, lebels))
+        self.data = list(zip(images_names, labels))
 
     def __call__(self, sample_info):
         # idx = sample_info.idx_in_epoch
@@ -131,20 +135,9 @@ class ExternalInputCallable:
                     raise FileNotFoundError(f"Image not found: {image_path}")
                     
                 try:
-                    # image = Image.open(image_path).convert('RGB')
                     image = np.fromfile(image_path, dtype=np.uint8)
-                    # image = mx.image.imread(image_path, 1)
-                    # image = decode_image(image_path, mode='RGB').contiguous()
-
-                    # if self.transform:
-                    #     try:
-                    #         image = self.transform(image)
-                    #     except Exception as e:
-                    #         print(f"Transform failed: {str(e)}")
-                    #         raise
-
-                    # image = image.numpy()
-                    encoded_label, _ = self.converter.encode(label)
+                    encoded_label, length = self.converter.encode([label])
+                    # logger.debug(f"{encoded_label.size()=}")
                     success = True
                     
                 except (OSError, IOError) as e:
@@ -160,7 +153,7 @@ class ExternalInputCallable:
         if not success:
             raise RuntimeError(f"Failed to load a valid image after {max_retries} attempts starting from index {idx}")
         
-        return image, encoded_label
+        return image, torch.squeeze(encoded_label), length
 
 class DALI_OCRDataModule(LightningDataModule):
     def __init__(
@@ -215,7 +208,7 @@ class DALI_OCRDataModule(LightningDataModule):
 
         self.train_dataloader = LightningWrapper(
             pipelines=train_pipeline, 
-            # reader_name="Reader", 
+            output_map=["data", "label", "length"],
             dataset_size=self.steps_per_epoch,
             auto_reset=True,
             last_batch_policy=LastBatchPolicy.DROP
@@ -233,6 +226,7 @@ class DALI_OCRDataModule(LightningDataModule):
         # )
         self.val_dataloader = LightningWrapper(
             pipelines=val_pipeline, 
+            output_map=["data", "label", "length"],
             dataset_size=len(self.val_images_names) // self.batch_size,
             auto_reset=True,
             last_batch_policy=LastBatchPolicy.DROP
@@ -252,7 +246,7 @@ class DALI_OCRDataModule(LightningDataModule):
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
     def get_dali_train_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
-        images, indices = fn.external_source(
+        images, indices, length = fn.external_source(
             source=ExternalInputCallable(
                 steps_per_epoch = self.steps_per_epoch,
                 data_path = self.train_data_path,
@@ -260,13 +254,13 @@ class DALI_OCRDataModule(LightningDataModule):
                 transform=data_transforms["train"],
                 batch_max_length=self.batch_max_length,
                 images_names = self.val_images_names, 
-                lebels = self.val_labels,
+                labels = self.val_labels,
                 batch_size=self.batch_size
             ),
-            num_outputs=2,
+            num_outputs=3,
             batch=False,
             parallel=False,
-            dtype=[types.UINT8, types.INT64],
+            dtype=[types.UINT8, types.INT64, types.INT64],
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
@@ -276,12 +270,13 @@ class DALI_OCRDataModule(LightningDataModule):
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
-        return images, indices
+        length = fn.pad(length, fill_value=0)
+        return images, indices, length
 
     @pipeline_def(num_threads=4, batch_size=32, device_id=0)
     def get_dali_val_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
-        images, indices = fn.external_source(
+        images, indices, length = fn.external_source(
             source=ExternalInputCallable(
                 steps_per_epoch = self.steps_per_epoch,
                 data_path = self.val_data_path,
@@ -289,13 +284,13 @@ class DALI_OCRDataModule(LightningDataModule):
                 transform=data_transforms["val"],
                 batch_max_length=self.batch_max_length,
                 images_names = self.val_images_names, 
-                lebels = self.val_labels,
+                labels = self.val_labels,
                 batch_size=self.batch_size
             ),
-            num_outputs=2,
+            num_outputs=3,
             batch=False,
             parallel=False,
-            dtype=[types.UINT8, types.INT64],
+            dtype=[types.UINT8, types.INT64, types.INT64],
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
@@ -305,7 +300,8 @@ class DALI_OCRDataModule(LightningDataModule):
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
-        return images, indices
+        length = fn.pad(length, fill_value=0)
+        return images, indices, length
 
 if __name__ == '__main__':
     data = DALI_OCRDataModule

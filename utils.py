@@ -112,7 +112,7 @@ class CTCLabelConverter_clovaai(object):
             batch_text[i][: len(text)] = torch.LongTensor(text)
         return (batch_text.to(self.device), torch.LongTensor(length).to(self.device))
 
-    def decode(self, text_index, length):
+    def decode(self, text_index, length=None):
         """convert text-index into text-label."""
         texts = []
         for index, l in enumerate(length):
@@ -150,9 +150,17 @@ class AttnLabelConverter:
         return (batch_text.to(self.device), torch.LongTensor(length).to(self.device))
 
     def decode(self, text_index, length):
+        """convert text-index into text-label."""
         texts = []
-        for index, l in enumerate(length):
-            text = ''.join([self.character[i] for i in text_index[index, :]])
+        for index in range(text_index.size(0)):
+            text = ''
+            for i in range(1, text_index.size(1)): # Start from 1 to skip [GO] token if it's encoded
+                char_index = text_index[index, i].item() # Use .item() to get Python int
+                if char_index == self.dict['[EOS]']:
+                    break  # Stop decoding at [EOS]
+                if char_index == self.dict['[GO]']: # Skip [GO] token in output text
+                    continue
+                text += self.character[char_index]
             texts.append(text)
         return texts
 
