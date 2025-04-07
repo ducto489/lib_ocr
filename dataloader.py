@@ -82,7 +82,7 @@ class LightningWrapper(DALIClassificationIterator):
 
     def __next__(self):
         batch = super().__next__()[0]
-        print(batch)
+        # logger.debug(f"{len(batch)=}")
         x, target = batch["data"], batch["label"]
         # target = target.squeeze(-1).int()
         x = x.detach().clone()
@@ -141,7 +141,16 @@ class ExternalInputCallable:
                         # image = Image.open(image_path).convert('RGB')
                         # image = np.fromfile(image_path, dtype=np.uint8)
                         # image = mx.image.imread(image_path, 1)
-                        image = decode_image(image_path, mode='RGB')
+                        image = decode_image(image_path, mode='RGB').contiguous()
+
+                        if self.transform:
+                            try:
+                                image = self.transform(image)
+                            except Exception as e:
+                                print(f"Transform failed: {str(e)}")
+                                raise
+
+                        # image = image.numpy()
                         encoded_label, _ = self.converter.encode(label)
                         
                         batch_images.append(image)
@@ -259,11 +268,13 @@ class DALI_OCRDataModule(LightningDataModule):
                 batch_size=self.batch_size
             ),
             num_outputs=2,
-            dtype=[types.UINT8, types.INT32],
+            dtype=[types.FLOAT, types.INT32],
         )
-        images = fn.decoders.image(images, device="mixed")
-        images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
-        images = fn.normalize(images, dtype=types.FLOAT)
+        # images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
+        # images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
+        # images = fn.normalize(images, dtype=types.FLOAT)
+        images = images.gpu()
+        # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = indices.gpu()
         return images, indices
@@ -283,11 +294,13 @@ class DALI_OCRDataModule(LightningDataModule):
                 batch_size=self.batch_size
             ),
             num_outputs=2,
-            dtype=[types.UINT8, types.INT32],
+            dtype=[types.FLOAT, types.INT32],
         )
-        images = fn.decoders.image(images, device="mixed")
-        images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
-        images = fn.normalize(images, dtype=types.FLOAT)
+        # images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
+        # images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
+        # images = fn.normalize(images, dtype=types.FLOAT)
+        images = images.gpu()
+        # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = indices.gpu()
         return images, indices
