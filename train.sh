@@ -3,7 +3,7 @@
 python cli.py fit \
     --data.train_data_path "/hdd1t/mduc/data/train" \
     --data.val_data_path "/hdd1t/mduc/data/val" \
-    --data.batch_size 2 \
+    --data.batch_size 32 \
     --data.num_workers 4 \
     --model.backbone_name "resnet18" \
     --model.seq_name "bilstm" \
@@ -16,5 +16,4 @@ python cli.py fit \
     --trainer.logger WandbLogger \
     --trainer.logger.name "real-train-50"\
     --trainer.logger.project "OCR"\
-    --trainer.log_every_n_steps 16\
-    --trainer.num_sanity_val_steps 0
+    --trainer.log_every_n_steps 16

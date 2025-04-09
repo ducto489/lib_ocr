@@ -187,7 +187,7 @@ class DALI_OCRDataModule(LightningDataModule):
         if pred_name=="ctc":
             self.converter = CTCLabelConverter(vocab, device="cpu")
         else:
-            self.converter = AttnLabelConverter(vocab)
+            self.converter = AttnLabelConverter(vocab, device="cpu")
         logger.debug("Processing tgt.csv file")
         self.train_images_names, self.train_labels = process_tgt(self.train_data_path, batch_max_length=self.batch_max_length)
         self.val_images_names, self.val_labels = process_tgt(self.val_data_path, batch_max_length=self.batch_max_length)
@@ -239,17 +239,7 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         return self.val_dataloader
 
-    # @pipeline_def(num_threads=4, batch_size=32, device_id=0)
-    # def get_dali_train_pipeline(self):
-    #     images, indices = fn.readers.file(file_root=self.train_data_path, files=self.train_images_names, labels=list(range(len(self.train_images_names))), random_shuffle=True, name="Reader")
-    #     images = fn.decoders.image(images, device="mixed")
-    #     images = fn.resize(images, resize_y=100) 
-    #     images = fn.normalize(images, dtype=types.FLOAT)
-    #     images = fn.pad(images, fill_value=0)
-    #     indices = indices.gpu()
-    #     return images, indices
-
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0)
+    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
     def get_dali_train_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
@@ -265,7 +255,7 @@ class DALI_OCRDataModule(LightningDataModule):
             ),
             num_outputs=3,
             batch=False,
-            parallel=False,
+            parallel=True,
             dtype=[types.UINT8, types.INT64, types.INT64],
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
@@ -279,7 +269,7 @@ class DALI_OCRDataModule(LightningDataModule):
         length = fn.pad(length, fill_value=0)
         return images, indices, length
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0)
+    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
     def get_dali_val_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
@@ -295,7 +285,7 @@ class DALI_OCRDataModule(LightningDataModule):
             ),
             num_outputs=3,
             batch=False,
-            parallel=False,
+            parallel=True,
             dtype=[types.UINT8, types.INT64, types.INT64],
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
