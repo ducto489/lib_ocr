@@ -93,12 +93,12 @@ class OCRModel(LightningModule):
         x = self.pred_module(x, text=text, is_train=self.training, batch_max_length=self.batch_max_length)
         return x
 
-    def on_train_epoch_start(self):
-        logger.debug("Run the train_dataloader")
-        self.trainer.datamodule.train_dataloader.run()
+    # def on_train_epoch_start(self):
+    #     logger.debug("Run the train_dataloader")
+    #     self.trainer.datamodule.train_dataloader.run()
 
-    def on_val_epoch_start(self):
-        self.trainer.datamodule.val_dataloader.run()
+    # def on_val_epoch_start(self):
+    #     self.trainer.datamodule.val_dataloader.run()
 
     def training_step(self, batch, batch_idx):
 
@@ -239,7 +239,7 @@ class OCRModel(LightningModule):
             optimizer,
             max_lr=[self.learning_rate * 0.1, self.learning_rate] if not self.seq_module else [self.learning_rate * 0.1, self.learning_rate, self.learning_rate],
             epochs=self.trainer.max_epochs,
-            steps_per_epoch=len(self.trainer.datamodule.train_dataloader()),
+            steps_per_epoch=self.trainer.datamodule.steps_per_epoch,
             pct_start=0.1,  # Warm up for 10% of training
             div_factor=10.0,  # Initial learning rate is max_lr/10
             final_div_factor=1e4,  # Final learning rate is max_lr/10000

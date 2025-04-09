@@ -200,7 +200,7 @@ class DALI_OCRDataModule(LightningDataModule):
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
         train_pipeline = self.get_dali_train_pipeline(batch_size=self.batch_size)
-        # train_pipeline.build()
+        train_pipeline.build()
         logger.debug("Train DALI pipelines built.")
         # self.train_dataloader = DALIClassificationIterator(
         #     pipelines=train_pipeline,
@@ -211,10 +211,11 @@ class DALI_OCRDataModule(LightningDataModule):
             pipelines=train_pipeline, 
             output_map=["data", "label", "length"],
             dataset_size=self.steps_per_epoch,
-            auto_reset=True,
-            last_batch_policy=LastBatchPolicy.DROP
+            auto_reset=False,
+            last_batch_policy=LastBatchPolicy.DROP,
+            # dynamic_shape=True
         )
-        self.train_dataloader.pipelines.schedule_run()
+        # self.train_dataloader.pipelines.run()
         return self.train_dataloader
     
     def val_dataloader(self):
@@ -230,8 +231,9 @@ class DALI_OCRDataModule(LightningDataModule):
             pipelines=val_pipeline, 
             output_map=["data", "label", "length"],
             dataset_size=len(self.val_images_names) // self.batch_size,
-            auto_reset=True,
-            last_batch_policy=LastBatchPolicy.DROP
+            auto_reset=False,
+            last_batch_policy=LastBatchPolicy.DROP,
+            # dynamic_shape=True
         )
         return self.val_dataloader
 
