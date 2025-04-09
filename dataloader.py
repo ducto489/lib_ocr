@@ -18,6 +18,7 @@ from PIL import Image
 import numpy as np
 from torchvision.io import decode_image
 import torch
+import random
 
 class OCRDataModule(LightningDataModule):
     def __init__(
@@ -115,6 +116,7 @@ class ExternalInputCallable(object):
         self.labels = labels
 
         self.data = list(zip(images_names, labels))
+        random.shuffle(self.data)
 
     def __call__(self, sample_info):
         # idx = sample_info.idx_in_epoch
