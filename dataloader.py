@@ -121,7 +121,8 @@ class ExternalInputCallable(object):
     def __call__(self, sample_info):
         # idx = sample_info.idx_in_epoch
         idx = sample_info.idx_in_epoch
-        if idx >= self.steps_per_epoch:
+        if idx >= len(self.data):
+            logger.debug(f"Trigger skip with {idx=} and {len(self.data)=}")
             # Indicate end of the epoch
             raise StopIteration()
         
@@ -195,7 +196,10 @@ class DALI_OCRDataModule(LightningDataModule):
         # self.train_labels = converter.encode(self.train_labels, batch_max_length=self.batch_max_length)
         # self.val_labels = converter.encode(self.val_labels, batch_max_length=self.batch_max_length)
         # logger.debug("Done!")
+        logger.debug(f"{len(self.train_images_names)=}")
+        logger.debug(f"{self.batch_size=}")
         self.steps_per_epoch = len(self.train_images_names) // self.batch_size
+        logger.debug(f"{self.steps_per_epoch=}")
         self.train_data_path = os.path.join(self.train_data_path, "images")
         self.val_data_path = os.path.join(self.val_data_path, "images")
 
@@ -214,7 +218,7 @@ class DALI_OCRDataModule(LightningDataModule):
             output_map=["data", "label", "length"],
             dataset_size=self.steps_per_epoch,
             auto_reset=False,
-            last_batch_policy=LastBatchPolicy.DROP,
+            last_batch_policy=LastBatchPolicy.FILL,
             # dynamic_shape=True
         )
         # self.train_dataloader.pipelines.run()
@@ -234,12 +238,12 @@ class DALI_OCRDataModule(LightningDataModule):
             output_map=["data", "label", "length"],
             dataset_size=len(self.val_images_names) // self.batch_size,
             auto_reset=False,
-            last_batch_policy=LastBatchPolicy.DROP,
+            last_batch_policy=LastBatchPolicy.FILL,
             # dynamic_shape=True
         )
         return self.val_dataloader
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
+    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn")#, exec_dynamic=True)
     def get_dali_train_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
@@ -251,7 +255,7 @@ class DALI_OCRDataModule(LightningDataModule):
                 batch_max_length=self.batch_max_length,
                 images_names = self.train_images_names, 
                 labels = self.train_labels,
-                batch_size=self.batch_size
+                batch_size=self.batch_size                
             ),
             num_outputs=3,
             batch=False,
@@ -269,7 +273,7 @@ class DALI_OCRDataModule(LightningDataModule):
         length = fn.pad(length, fill_value=0)
         return images, indices, length
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
+    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn")#, exec_dynamic=True)
     def get_dali_val_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
