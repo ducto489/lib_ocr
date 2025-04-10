@@ -19,6 +19,7 @@ import numpy as np
 from torchvision.io import decode_image
 import torch
 import random
+import io
 
 class OCRDataModule(LightningDataModule):
     def __init__(
@@ -139,7 +140,15 @@ class ExternalInputCallable(object):
                     raise FileNotFoundError(f"Image not found: {image_path}")
                     
                 try:
-                    image = np.fromfile(image_path, dtype=np.uint8)
+                    with open(image_path, 'rb') as f:
+                        file_bytes = f.read()
+                    bytes_io = io.BytesIO(file_bytes)
+
+                    # image verify() don't work so use load()
+                    with Image.open(bytes_io) as img:
+                        img.load()
+
+                    image = np.frombuffer(file_bytes, dtype=np.uint8)
                     encoded_label, length = self.converter.encode([label])
                     # logger.debug(f"{encoded_label.size()=}")
                     success = True
