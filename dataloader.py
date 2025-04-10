@@ -243,7 +243,7 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         return self.val_dataloader
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn")#, exec_dynamic=True)
+    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
     def get_dali_train_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
@@ -273,7 +273,7 @@ class DALI_OCRDataModule(LightningDataModule):
         length = fn.pad(length, fill_value=0)
         return images, indices, length
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn")#, exec_dynamic=True)
+    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
     def get_dali_val_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(

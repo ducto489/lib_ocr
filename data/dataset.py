@@ -175,7 +175,7 @@ def process_tgt(data_path, batch_max_length):
     
     # Filter out samples exceeding batch_max_length
     total_samples = len(df)
-    df = df[df['label'].str.len() <= batch_max_length].sample(frac=0.05, random_state=42)
+    df = df[df['label'].str.len() <= batch_max_length]#.sample(frac=0.01, random_state=42)
     filtered_samples = total_samples - len(df)
     if filtered_samples > 0:
         print(f"Filtered out {filtered_samples} samples ({filtered_samples/total_samples*100:.2f}%) exceeding max length {batch_max_length}")

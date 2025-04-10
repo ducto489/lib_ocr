@@ -182,6 +182,8 @@ class OCRModel(LightningModule):
         save_path = f"{self.save_dir}/model_train_epoch_{epoch}.ckpt"
         self.trainer.save_checkpoint(save_path)
         logger.info(f"Saved model checkpoint after training epoch {epoch} to {save_path}")
+        # Reset
+        self.trainer.datamodule.train_dataloader.reset()
 
     def on_validation_epoch_start(self):
         # Reset stored predictions and targets
@@ -214,6 +216,8 @@ class OCRModel(LightningModule):
         # Clear predictions and targets
         self.val_predictions = []
         self.val_targets = []
+        # Reset
+        self.trainer.datamodule.val_dataloader.reset()
         
     def evaluate(self, batch, batch_idx):
         # TODO: implement evaluation
