@@ -8,9 +8,8 @@ This repository contains a PyTorch Lightning implementation of an OCR (Optical C
   - [Environment Setup](#environment-setup)
   - [Data Setup](#data-setup)
 - [Training](#training)
-- [Evaluation](#evaluation)
-- [Model Architecture](#model-architecture)
-- [Configuration](#configuration)
+  - [Training Parameters] (#training-parameters)
+
 
 ## Features
 
@@ -33,6 +32,7 @@ cd lib_ocr
 2. Install dependencies:
 ```bash
 pip install -r requirements.txt
+```
 
 ### Data Setup
 
