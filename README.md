@@ -8,7 +8,7 @@ This repository contains a PyTorch Lightning implementation of an OCR (Optical C
   - [Environment Setup](#environment-setup)
   - [Data Setup](#data-setup)
 - [Training](#training)
-  - [Training Parameters] (#training-parameters)
+  - [Training Parameters](#training-parameters)
 
 
 ## Features
