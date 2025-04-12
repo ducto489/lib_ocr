@@ -36,27 +36,26 @@ pip install -r requirements.txt
 
 ### Data Setup
 
-#### Option 1: Download from Kaggle
+#### Option 1: Download from Hugging Face
 
-1. Install the Kaggle CLI:
+1. Method A: Using wget:
 ```bash
-pip install kaggle
+# Download the OCR dataset directly
+wget https://huggingface.co/datasets/ducto489/ocr_datasets/resolve/main/output.zip
+unzip output.zip -d /path/to/data/folder
 ```
 
-2. Set up Kaggle credentials:
-   - Go to your Kaggle account, then to 'Account' tab
-   - Scroll down to API section and click 'Create New API Token'
-   - Place the downloaded `kaggle.json` file in `~/.kaggle/`
-   - Set proper permissions: `chmod 600 ~/.kaggle/kaggle.json`
-
-3. Download the OCR dataset:
+2. Method B: Using Hugging Face CLI:
 ```bash
-# Replace with your specific dataset command
-kaggle datasets download -d [dataset-name]
-unzip [dataset-name].zip -d /path/to/data/folder
+# Install the Hugging Face CLI if you haven't already
+pip install huggingface_hub
+
+# Download the OCR dataset
+huggingface-cli download ducto489/ocr_datasets output.zip --repo-type dataset --local-dir .
+unzip output.zip -d /path/to/data/folder
 ```
 
-4. Prepare the data in the required format:
+3. Prepare the data in the required format:
 ```
 /path/to/data/
 ├── train/
@@ -77,7 +76,7 @@ The `tgt.csv` should contain image names and their corresponding text labels.
 
 ## Training
 
-Start training with the following command:
+Start training with the following command inside the `train.sh`:
 
 ```bash
 python cli.py fit \
