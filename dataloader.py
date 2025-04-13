@@ -14,6 +14,7 @@ import nvidia.dali.fn as fn
 class OCRDataModule(LightningDataModule):
     def __init__(
         self,
+        dali: bool = False,
         train_data_path: str = "./training_images/",
         val_data_path: str = "./validation_images/",
         batch_size: int = 32,
@@ -69,6 +70,7 @@ class OCRDataModule(LightningDataModule):
 class DALI_OCRDataModule(LightningDataModule):
     def __init__(
         self,
+        dali : bool = True,
         train_data_path: str = "./training_images/",
         val_data_path: str = "./validation_images/",
         batch_size: int = 32,
@@ -150,7 +152,7 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         return self.val_dataloader
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
+    @pipeline_def(num_threads=8, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
     def get_dali_train_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
@@ -168,6 +170,7 @@ class DALI_OCRDataModule(LightningDataModule):
             batch=False,
             parallel=True,
             dtype=[types.UINT8, types.INT64, types.INT64],
+            prefetch_queue_depth=2,
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
@@ -180,7 +183,7 @@ class DALI_OCRDataModule(LightningDataModule):
         length = fn.pad(length, fill_value=0)
         return images, indices, length
 
-    @pipeline_def(num_threads=4, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
+    @pipeline_def(num_threads=8, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
     def get_dali_val_pipeline(self):
         # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
         images, indices, length = fn.external_source(
@@ -198,6 +201,7 @@ class DALI_OCRDataModule(LightningDataModule):
             batch=False,
             parallel=True,
             dtype=[types.UINT8, types.INT64, types.INT64],
+            prefetch_queue_depth=2,
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 

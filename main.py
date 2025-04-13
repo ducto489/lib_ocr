@@ -128,9 +128,6 @@ class OCRModel(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        # logger.debug(f"{batch_idx=}")
-        # images = batch["images"]
-        # labels = batch["labels"]
         images = batch[0]
         text_encoded = batch[1]
         text_lengths = batch[2]
@@ -236,14 +233,12 @@ class OCRModel(LightningModule):
             
         optimizer = torch.optim.AdamW(param_groups, weight_decay=self.weight_decay)
 
-        # logger.info(f"steps_per_epoch: {self.trainer.datamodule.steps_per_epoch}")
-
         # Use OneCycleLR for better convergence
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
             max_lr=[self.learning_rate * 0.1, self.learning_rate] if not self.seq_module else [self.learning_rate * 0.1, self.learning_rate, self.learning_rate],
             epochs=self.trainer.max_epochs,
-            steps_per_epoch=self.trainer.datamodule.steps_per_epoch,
+            steps_per_epoch=self.trainer.datamodule.steps_per_epoch, #if self.trainer.datamodule.dali else len(self.trainer.datamodule.train_dataloader()),
             pct_start=0.1,  # Warm up for 10% of training
             div_factor=10.0,  # Initial learning rate is max_lr/10
             final_div_factor=1e4,  # Final learning rate is max_lr/10000

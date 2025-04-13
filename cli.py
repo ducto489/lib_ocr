@@ -6,9 +6,6 @@ import os
 
 class OCRTrainingCLI(LightningCLI):
     def add_arguments_to_parser(self, parser):
-        # Add arguments for time-based validation
-        parser.add_argument("--validation_interval", type=float, 
-                          help="Run validation every N hours during training")
         parser.add_argument("--save_dir", type=str, default="checkpoints",
                           help="Directory to save checkpoints")
         parser.link_arguments('model.batch_max_length', 'data.batch_max_length')
@@ -21,6 +18,16 @@ class OCRTrainingCLI(LightningCLI):
         os.makedirs(save_dir, exist_ok=True)
 
 def cli_main():
+    # Get command line arguments
+    # import sys
+    # args = sys.argv
+    
+    # # Check if any argument contains "data.dali"
+    # use_dali = any("data.dali" in arg and "True" in arg for arg in args)
+    
+    # # Select the appropriate data module
+    # data_module = DALI_OCRDataModule if use_dali else OCRDataModule
+
     OCRTrainingCLI(
         OCRModel, 
         DALI_OCRDataModule,
