@@ -15,6 +15,6 @@ python cli.py fit \
     --trainer.max_epochs 10 \
     --trainer.val_check_interval 0.2 \
     --trainer.logger WandbLogger \
-    --trainer.logger.name "real-train-50"\
+    --trainer.logger.name "test"\
     --trainer.logger.project "OCR"\
     --trainer.log_every_n_steps 16

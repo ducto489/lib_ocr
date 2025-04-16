@@ -1,4 +1,5 @@
 from pytorch_lightning.cli import LightningCLI
+from pytorch_lightning.callbacks import LearningRateMonitor
 from main import OCRModel
 from dataloader import OCRDataModule, DALI_OCRDataModule
 import os
@@ -17,19 +18,23 @@ class OCRTrainingCLI(LightningCLI):
         save_dir = self.config.get("save_dir", "checkpoints")
         os.makedirs(save_dir, exist_ok=True)
 
+        # Add LearningRateMonitor callback
+        lr_monitor = LearningRateMonitor(logging_interval='step')
+        self.trainer.callbacks.append(lr_monitor)
+
 def cli_main():
     # Get command line arguments
     # import sys
     # args = sys.argv
-    
+
     # # Check if any argument contains "data.dali"
     # use_dali = any("data.dali" in arg and "True" in arg for arg in args)
-    
+
     # # Select the appropriate data module
     # data_module = DALI_OCRDataModule if use_dali else OCRDataModule
 
     OCRTrainingCLI(
-        OCRModel, 
+        OCRModel,
         DALI_OCRDataModule,
         save_config_kwargs={"overwrite": True},
         seed_everything_default=42
