@@ -4,7 +4,7 @@ from pytorch_lightning.loggers import WandbLogger
 import torch
 from torch import nn
 from torch.optim import Adam
-from torch.optim.lr_scheduler import OneCycleLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from loguru import logger
 from torchmetrics.text import CharErrorRate, WordErrorRate
 
@@ -45,14 +45,14 @@ class OCRModel(LightningModule):
             self.loss = nn.CTCLoss(blank=0, zero_infinity=True)
         else:
             self.loss = nn.CrossEntropyLoss(ignore_index=0)
-            
+
         # Initialize metrics
         self.cer = CharErrorRate()
         self.wer = WordErrorRate()
         self.ser = SentenceErrorRate()
         self.val_predictions = []
         self.val_targets = []
-        
+
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.weight_decay = weight_decay
@@ -108,7 +108,7 @@ class OCRModel(LightningModule):
         # images = batch["images"]
         # labels = batch["labels"]
         # labels = self.converter.decode(text_encoded)
-        
+
         if self.pred_name == "ctc":
             # Forward pass
             logits = self(images, text=text_encoded)
@@ -150,17 +150,17 @@ class OCRModel(LightningModule):
             )
             # Calculate loss
             loss = self.loss(log_probs, text_encoded, input_lengths, text_lengths)
-            
+
             # Get predictions for metrics
             preds = log_probs.argmax(2).permute(1, 0).detach().cpu()
             pred_texts = self.converter.decode(preds)
-            
+
         else:
             # Attention model validation
             preds = self(images, text=text_encoded[:, :-1]).to(device)
             target = text_encoded[:, 1:].to(device)  # Shift target by 1 since we predict next char
             loss = self.loss(preds.view(-1, preds.shape[-1]), target.contiguous().view(-1))
-            
+
             # Get predictions for metrics
             pred_size = torch.LongTensor([preds.size(1)] * preds.size(0))
             _, pred_index = preds.max(2)
@@ -197,7 +197,7 @@ class OCRModel(LightningModule):
         wer = self.wer(self.val_predictions, self.val_targets)
         self.log("val_wer", wer, prog_bar=True)
         logger.info(f"Validation WER: {wer:.4f}")
-        
+
         # Calculate and log SER
         ser = self.ser(self.val_predictions, self.val_targets)
         self.log("val_ser", ser, prog_bar=True)
@@ -215,7 +215,7 @@ class OCRModel(LightningModule):
         self.val_targets = []
         # Reset
         self.trainer.datamodule.val_dataloader.reset()
-        
+
     def evaluate(self, batch, batch_idx):
         # TODO: implement evaluation
         pass
@@ -226,30 +226,25 @@ class OCRModel(LightningModule):
             {"params": self.backbone.parameters(), "lr": self.learning_rate * 0.1},
             {"params": self.pred_module.parameters(), "lr": self.learning_rate},
         ]
-        
+
         # Only add seq_module parameters if it exists
         if self.seq_module:
             param_groups.insert(1, {"params": self.seq_module.parameters(), "lr": self.learning_rate})
-            
+
         optimizer = torch.optim.AdamW(param_groups, weight_decay=self.weight_decay)
 
-        # Use OneCycleLR for better convergence
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        # Use CosineAnnealingLR for learning rate scheduling
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            max_lr=[self.learning_rate * 0.1, self.learning_rate] if not self.seq_module else [self.learning_rate * 0.1, self.learning_rate, self.learning_rate],
-            epochs=self.trainer.max_epochs,
-            steps_per_epoch=self.trainer.datamodule.steps_per_epoch, #if self.trainer.datamodule.dali else len(self.trainer.datamodule.train_dataloader()),
-            pct_start=0.1,  # Warm up for 10% of training
-            div_factor=10.0,  # Initial learning rate is max_lr/10
-            final_div_factor=1e4,  # Final learning rate is max_lr/10000
-            anneal_strategy='cos',
+            T_max=self.trainer.max_epochs,
+            eta_min=self.learning_rate / 100,  # Minimum learning rate at the end of schedule
         )
 
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "interval": "step",
+                "interval": "epoch",
                 "frequency": 1,
             },
         }

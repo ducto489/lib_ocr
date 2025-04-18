@@ -9,7 +9,7 @@ python cli.py fit \
     --model.backbone_name "resnet18" \
     --model.seq_name "bilstm" \
     --model.pred_name "attn" \
-    --model.learning_rate 1e-3 \
+    --model.learning_rate 1e-4 \
     --model.batch_max_length 50 \
     --model.save_dir "checkpoints/run50" \
     --trainer.max_epochs 10 \
