@@ -15,6 +15,8 @@ from utils import SentenceErrorRate
 from utils import CTCLabelConverter_clovaai, AttnLabelConverter
 from data.vocab import Vocab
 
+import os
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class OCRModel(LightningModule):
@@ -28,12 +30,14 @@ class OCRModel(LightningModule):
         weight_decay: float = 1e-5,
         save_dir: str = "checkpoints",
         batch_max_length: int = 50,
+        train_data_path: str = "./training_images/",
     ):
         super().__init__()
         self.backbone_name = backbone_name if backbone_name is not None else "resnet18"
         self.seq_name = seq_name
         self.pred_name = pred_name
-        self.vocab = Vocab("/hdd1t/mduc/data/train/tgt.csv").get_vocab_csv()
+        path = os.path.join(train_data_path, "tgt.csv")
+        self.vocab = Vocab(path).get_vocab_csv()
         if self.pred_name == "ctc":
             self.converter = CTCLabelConverter_clovaai(self.vocab, device="cuda")
         else:
@@ -172,6 +176,22 @@ class OCRModel(LightningModule):
 
         self.log("val_loss", loss, prog_bar=True)
         return loss
+
+    def on_train_start(self):
+        # Log hyperparameters to the logger
+        hyperparams = {
+            "backbone_name": self.backbone_name,
+            "seq_name": self.seq_name,
+            "pred_name": self.pred_name,
+            "batch_size": self.batch_size,
+            "learning_rate": self.learning_rate,
+            "weight_decay": self.weight_decay,
+            "batch_max_length": self.batch_max_length,
+            "max_epochs": self.trainer.max_epochs
+        }
+
+        self.logger.log_hyperparams(hyperparams)
+        logger.info(f"Logged hyperparameters: {hyperparams}")
 
     def on_train_epoch_end(self):
         # Save model after each training epoch

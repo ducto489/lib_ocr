@@ -11,10 +11,10 @@ class OCRTrainingCLI(LightningCLI):
                           help="Directory to save checkpoints")
         parser.link_arguments('model.batch_max_length', 'data.batch_max_length')
         parser.link_arguments('model.pred_name', 'data.pred_name')
+        parser.link_arguments('data.batch_size', 'model.batch_size')
+        parser.link_arguments('data.train_data_path', 'model.train_data_path')
 
     def before_fit(self):
-        #TODO: Fix argument parsing in lightning cli
-        # Create checkpoint directory if it doesn't exist
         save_dir = self.config.get("save_dir", "checkpoints")
         os.makedirs(save_dir, exist_ok=True)
 
@@ -23,16 +23,6 @@ class OCRTrainingCLI(LightningCLI):
         self.trainer.callbacks.append(lr_monitor)
 
 def cli_main():
-    # Get command line arguments
-    # import sys
-    # args = sys.argv
-
-    # # Check if any argument contains "data.dali"
-    # use_dali = any("data.dali" in arg and "True" in arg for arg in args)
-
-    # # Select the appropriate data module
-    # data_module = DALI_OCRDataModule if use_dali else OCRDataModule
-
     OCRTrainingCLI(
         OCRModel,
         DALI_OCRDataModule,

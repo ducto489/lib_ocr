@@ -34,7 +34,12 @@ class OCRDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.batch_max_length = batch_max_length
+        self.dali = dali
+        self.pred_name = pred_name
         self.collator = OCRCollator()
+
+        # Save hyperparameters for logging
+        self.save_hyperparameters()
 
     def train_dataloader(self):
         self.train_data = OCRDataset(
@@ -90,9 +95,15 @@ class DALI_OCRDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.batch_max_length = batch_max_length
+        self.dali = dali
+        self.pred_name = pred_name
+
+        # Save hyperparameters for logging
+        self.save_hyperparameters()
 
         logger.debug("Get Vocab")
-        vocab = Vocab("/hdd1t/mduc/data/train/tgt.csv").get_vocab_csv()
+        path = os.path.join(self.train_data_path, "tgt.csv")
+        vocab = Vocab(path).get_vocab_csv()
         logger.debug(f"{pred_name=}")
         if pred_name=="ctc":
             self.converter = CTCLabelConverter(vocab, device="cpu")
@@ -114,7 +125,7 @@ class DALI_OCRDataModule(LightningDataModule):
 
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
-        train_pipeline = self.get_dali_train_pipeline(batch_size=self.batch_size)
+        train_pipeline = self.get_dali_train_pipeline(batch_size=self.batch_size, num_threads=self.num_workers)
         train_pipeline.build()
         logger.debug("Train DALI pipelines built.")
         # self.train_dataloader = DALIClassificationIterator(
@@ -123,7 +134,7 @@ class DALI_OCRDataModule(LightningDataModule):
         # )
 
         self.train_dataloader = LightningWrapper(
-            pipelines=train_pipeline, 
+            pipelines=train_pipeline,
             output_map=["data", "label", "length"],
             dataset_size=self.steps_per_epoch,
             auto_reset=False,
@@ -132,10 +143,10 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         # self.train_dataloader.pipelines.run()
         return self.train_dataloader
-    
+
     def val_dataloader(self):
         logger.debug("Building val DALI pipelines...")
-        val_pipeline = self.get_dali_val_pipeline(batch_size=self.batch_size)
+        val_pipeline = self.get_dali_val_pipeline(batch_size=self.batch_size, num_threads=self.num_workers)
         val_pipeline.build()
         logger.debug("Val DALI pipelines built.")
         # self.val_dataloader = DALIClassificationIterator(
@@ -143,7 +154,7 @@ class DALI_OCRDataModule(LightningDataModule):
         #     auto_reset=True,
         # )
         self.val_dataloader = LightningWrapper(
-            pipelines=val_pipeline, 
+            pipelines=val_pipeline,
             output_map=["data", "label", "length"],
             dataset_size=len(self.val_images_names) // self.batch_size,
             auto_reset=False,
@@ -162,9 +173,9 @@ class DALI_OCRDataModule(LightningDataModule):
                 converter = self.converter,
                 transform=data_transforms["train"],
                 batch_max_length=self.batch_max_length,
-                images_names = self.train_images_names, 
+                images_names = self.train_images_names,
                 labels = self.train_labels,
-                batch_size=self.batch_size                
+                batch_size=self.batch_size
             ),
             num_outputs=3,
             batch=False,
@@ -173,7 +184,7 @@ class DALI_OCRDataModule(LightningDataModule):
             prefetch_queue_depth=2,
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
-        images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
+        images = fn.resize(images, resize_y=100, dtype=types.FLOAT)
         images = fn.normalize(images, dtype=types.FLOAT)
         # images = images.gpu()
         indices = indices.gpu()
@@ -193,7 +204,7 @@ class DALI_OCRDataModule(LightningDataModule):
                 converter = self.converter,
                 transform=data_transforms["val"],
                 batch_max_length=self.batch_max_length,
-                images_names = self.val_images_names, 
+                images_names = self.val_images_names,
                 labels = self.val_labels,
                 batch_size=self.batch_size
             ),
@@ -204,7 +215,7 @@ class DALI_OCRDataModule(LightningDataModule):
             prefetch_queue_depth=2,
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
-        images = fn.resize(images, resize_y=100, dtype=types.FLOAT) 
+        images = fn.resize(images, resize_y=100, dtype=types.FLOAT)
         images = fn.normalize(images, dtype=types.FLOAT)
         # images = images.gpu()
         indices = indices.gpu()
