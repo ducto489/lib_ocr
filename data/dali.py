@@ -78,7 +78,7 @@ class ExternalInputCallable(object):
                         img.load()
 
                     image = np.frombuffer(file_bytes, dtype=np.uint8)
-                    encoded_label, length = self.converter.encode([label])
+                    encoded_label, length = self.converter.encode([label], batch_max_length=self.batch_max_length)
                     # logger.debug(f"{encoded_label.size()=}")
                     success = True
                     

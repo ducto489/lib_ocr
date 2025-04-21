@@ -1,5 +1,6 @@
 --extra-index-url https://download.pytorch.org/whl/cu121
 --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda120
+--extra-index-url https://pypi.nvidia.com --upgrade nvidia-dali-cuda120
 
 torch==2.5.1+cu121
 pytorch-lightning==2.4.0
@@ -9,3 +10,4 @@ timm
 jsonargparse[signatures]>=4.27.7
 loguru
 torchvision
+pandas
