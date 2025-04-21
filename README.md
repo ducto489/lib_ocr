@@ -23,13 +23,19 @@ This repository contains a PyTorch Lightning implementation of an OCR (Optical C
 
 ### Environment Setup
 
-1. Clone the repository:
+1. Create a new environment with Python 3.11.11 using conda:
+```bash
+conda create -n ocr python=3.11.11
+conda activate ocr
+```
+
+2. Clone the repository:
 ```bash
 git clone https://github.com/AnyGlow/lib_ocr.git
 cd lib_ocr
 ```
 
-2. Install dependencies:
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
