@@ -21,7 +21,6 @@ class Attention(nn.Module):
         self.num_classes = num_classes
         self.attention_cell = AttentionCell(input_dim, hidden_dim, num_classes)
         self.generator = nn.Linear(hidden_dim, num_classes)
-        self.bn = nn.BatchNorm1d(num_classes)  # Add BatchNorm1d
         # Initialize weights
         nn.init.xavier_uniform_(self.generator.weight)
         if self.generator.bias is not None:
@@ -36,7 +35,7 @@ class Attention(nn.Module):
         onehot = onehot.scatter_(1, input_char, 1)
         return onehot
 
-    def forward(self, batch_H, text=None, is_train=True, batch_max_length=50):
+    def forward(self, batch_H, batch_max_length, text=None, is_train=True):
         batch_size = batch_H.size(0)
         num_steps = batch_max_length + 1
 
@@ -48,10 +47,8 @@ class Attention(nn.Module):
                 char_onehots = self._char_to_onehot(text[:, i])
                 hidden = self.attention_cell(hidden, batch_H, char_onehots)
                 output_hiddens[:, i, :] = hidden
-            # Apply generator and reshape for batch norm
             logits = self.generator(output_hiddens.view(-1, self.hidden_dim))
-            logits = self.bn(logits).view(batch_size, num_steps, -1)
-            probs = logits  # Let the loss function handle the softmax
+            probs = logits.view(batch_size, num_steps, -1)  # Let the loss function handle the softmax
         
         else:
             # Inference mode or when text is not provided
@@ -60,9 +57,7 @@ class Attention(nn.Module):
             for i in range(num_steps):
                 char_onehots = self._char_to_onehot(target)
                 hidden = self.attention_cell(hidden, batch_H, char_onehots)
-                # Apply generator and batch norm for each step
                 probs_step = self.generator(hidden)
-                probs_step = self.bn(probs_step)
                 probs[:, i, :] = probs_step
                 _, target = probs_step.max(dim=1)
             

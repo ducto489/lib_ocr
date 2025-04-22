@@ -22,6 +22,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class OCRModel(LightningModule):
     def __init__(
         self,
+        batch_max_length,
         backbone_name: str = "resnet18",
         seq_name: str = "bilstm",
         pred_name: str = "ctc",
@@ -29,7 +30,6 @@ class OCRModel(LightningModule):
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-5,
         save_dir: str = "checkpoints",
-        batch_max_length: int = 50,
         train_data_path: str = "./training_images/",
     ):
         super().__init__()

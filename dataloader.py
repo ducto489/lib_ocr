@@ -14,12 +14,12 @@ import nvidia.dali.fn as fn
 class OCRDataModule(LightningDataModule):
     def __init__(
         self,
+        batch_max_length,
         dali: bool = False,
         train_data_path: str = "./training_images/",
         val_data_path: str = "./validation_images/",
         batch_size: int = 32,
         num_workers: int = 4,
-        batch_max_length: int = 50,
         pred_name: str = "attn"
     ):
         logger.debug(f"{train_data_path=}")
@@ -75,12 +75,12 @@ class OCRDataModule(LightningDataModule):
 class DALI_OCRDataModule(LightningDataModule):
     def __init__(
         self,
+        batch_max_length,
         dali : bool = True,
         train_data_path: str = "./training_images/",
         val_data_path: str = "./validation_images/",
         batch_size: int = 32,
         num_workers: int = 4,
-        batch_max_length: int = 50,
         pred_name: str = "attn",
     ):
         logger.debug(f"{train_data_path=}")

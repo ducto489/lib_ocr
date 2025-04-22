@@ -10,7 +10,7 @@ import pandas as pd
 
 
 class OCRDataset(Dataset):
-    def __init__(self, data_path, transform=None, batch_max_length=50):
+    def __init__(self, data_path, batch_max_length, transform=None):
         self.data_path = data_path
         self.transform = transform
         self.batch_max_length = batch_max_length
