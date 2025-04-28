@@ -45,7 +45,8 @@ class OCRDataModule(LightningDataModule):
         self.train_data = OCRDataset(
             self.train_data_path,
             transform=data_transforms["train"],
-            batch_max_length=self.batch_max_length
+            batch_max_length=self.batch_max_length,
+            pred_name=self.pred_name
         )
         return DataLoader(
             self.train_data,
@@ -61,7 +62,8 @@ class OCRDataModule(LightningDataModule):
         self.val_data = OCRDataset(
             self.val_data_path,
             transform=data_transforms["val"],
-            batch_max_length=self.batch_max_length
+            batch_max_length=self.batch_max_length,
+            pred_name=self.pred_name
         )
         return DataLoader(
             self.val_data,

@@ -13,6 +13,7 @@ class OCRTrainingCLI(LightningCLI):
         parser.link_arguments('model.pred_name', 'data.pred_name')
         parser.link_arguments('data.batch_size', 'model.batch_size')
         parser.link_arguments('data.train_data_path', 'model.train_data_path')
+        parser.link_arguments('data.dali', 'model.dali')
 
     def before_fit(self):
         save_dir = self.config.get("save_dir", "checkpoints")
@@ -25,7 +26,7 @@ class OCRTrainingCLI(LightningCLI):
 def cli_main():
     OCRTrainingCLI(
         OCRModel,
-        DALI_OCRDataModule,
+        OCRDataModule,
         save_config_kwargs={"overwrite": True},
         seed_everything_default=42
     )

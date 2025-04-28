@@ -5,7 +5,7 @@ python cli.py fit \
     --data.val_data_path "/home/qsvm/dataset/val" \
     --data.batch_size 64 \
     --data.num_workers 8 \
-    --data.dali True \
+    --data.dali False \
     --model.backbone_name "resnet18" \
     --model.seq_name "bilstm" \
     --model.pred_name "attn" \
@@ -13,7 +13,6 @@ python cli.py fit \
     --model.batch_max_length 50 \
     --model.save_dir "checkpoints/run50" \
     --trainer.max_epochs 10 \
-    --trainer.val_check_interval 0.25 \
     --trainer.logger WandbLogger \
     --trainer.logger.name "train200-CosineAnnealingLR"\
     --trainer.logger.project "OCR"\

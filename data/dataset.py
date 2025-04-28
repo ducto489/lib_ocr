@@ -7,16 +7,27 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import pandas as pd
+from loguru import logger
+from utils import CTCLabelConverter, AttnLabelConverter
+from data.vocab import Vocab
 
 
 class OCRDataset(Dataset):
-    def __init__(self, data_path, batch_max_length, transform=None):
+    def __init__(self, data_path, batch_max_length, pred_name="attn", transform=None):
         self.data_path = data_path
         self.transform = transform
         self.batch_max_length = batch_max_length
         
         images, labels = process_tgt(data_path, batch_max_length)
         self.data = list(zip(images, labels)) #list(zip(df['image_name'], df['label']))
+        logger.debug("Get Vocab")
+        path = os.path.join(self.data_path, "tgt.csv")
+        vocab = Vocab(path).get_vocab_csv()
+        logger.debug(f"{pred_name=}")
+        if pred_name=="ctc":
+            self.converter = CTCLabelConverter(vocab, device="cpu")
+        else:
+            self.converter = AttnLabelConverter(vocab, device="cpu")
 
     def __len__(self):
         return len(self.data)
@@ -29,8 +40,10 @@ class OCRDataset(Dataset):
         
         if self.transform:
             image = self.transform(image)
-                
-        return image, label
+        
+        encoded_label, length = self.converter.encode([label], batch_max_length=self.batch_max_length)
+
+        return image, torch.squeeze(encoded_label), length
 
 class ResizeNormalize(object):
 

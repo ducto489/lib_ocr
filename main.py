@@ -23,6 +23,7 @@ class OCRModel(LightningModule):
     def __init__(
         self,
         batch_max_length,
+        dali,
         backbone_name: str = "resnet18",
         seq_name: str = "bilstm",
         pred_name: str = "ctc",
@@ -62,6 +63,7 @@ class OCRModel(LightningModule):
         self.weight_decay = weight_decay
         self.batch_max_length = batch_max_length
         self.save_dir = save_dir
+        self.dali = dali
 
     def _build_model(self):
         logger.info(f"{self.backbone_name}")
@@ -132,8 +134,7 @@ class OCRModel(LightningModule):
         text_encoded = batch["label"]
         text_lengths = batch["length"]
         # text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
-        # logger.debug(f"{images.size()=}")
-        # logger.debug(f"{text_encoded.size()=}")
+
         labels = self.converter.decode(text_encoded, text_lengths)
 
         if self.pred_name == "ctc":
@@ -196,7 +197,8 @@ class OCRModel(LightningModule):
         self.trainer.save_checkpoint(save_path)
         logger.info(f"Saved model checkpoint after training epoch {epoch} to {save_path}")
         # Reset
-        self.trainer.datamodule.train_dataloader.reset()
+        if self.dali:
+            self.trainer.datamodule.train_dataloader.reset()
 
     def on_validation_epoch_start(self):
         # Reset stored predictions and targets
@@ -230,7 +232,8 @@ class OCRModel(LightningModule):
         self.val_predictions = []
         self.val_targets = []
         # Reset
-        self.trainer.datamodule.val_dataloader.reset()
+        if self.dali:
+             self.trainer.datamodule.val_dataloader.reset()
 
     def evaluate(self, batch, batch_idx):
         # TODO: implement evaluation

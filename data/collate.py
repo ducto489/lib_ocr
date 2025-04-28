@@ -9,7 +9,7 @@ class OCRCollator:
 
     def __call__(self, batch):
         # Unpack batch into separate lists
-        images, labels = zip(*batch)
+        images, encoded_labels, lengths = zip(*batch)
 
         # Convert images to tensors and get their shapes
         # images = [self.to_tensor(img) for img in images]
@@ -30,7 +30,13 @@ class OCRCollator:
             if orig_width < max_width:
                 padded_imgs[i, :, :, orig_width:] = img[:, :, -1].unsqueeze(2)
 
+        padded_labels = torch.zeros((len(encoded_labels), encoded_labels[0].size(0)),
+                                  dtype=torch.int64)
+        for i, label in enumerate(encoded_labels):
+            padded_labels[i] = label
+
         return {
-            "images": padded_imgs,  # Batched image tensor
-            "labels": labels,  # List of labels (strings)
+            "data": padded_imgs,  # Batched image tensor
+            "label": padded_labels,  # Padded encoded labels
+            "length": torch.tensor(lengths).squeeze()  # Lengths of original labels
         }
