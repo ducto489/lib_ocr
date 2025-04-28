@@ -64,6 +64,7 @@ class OCRModel(LightningModule):
         self.batch_max_length = batch_max_length
         self.save_dir = save_dir
         self.dali = dali
+        logger.info(f"{self.dali=}")
 
     def _build_model(self):
         logger.info(f"{self.backbone_name}")
@@ -184,7 +185,8 @@ class OCRModel(LightningModule):
             "learning_rate": self.learning_rate,
             "weight_decay": self.weight_decay,
             "batch_max_length": self.batch_max_length,
-            "max_epochs": self.trainer.max_epochs
+            "max_epochs": self.trainer.max_epochs,
+            "dali": self.dali,
         }
 
         self.logger.log_hyperparams(hyperparams)
