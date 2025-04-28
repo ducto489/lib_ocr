@@ -19,16 +19,11 @@ class LightningWrapper(DALIGenericIterator):
 
     def __next__(self):
         batch = super().__next__()[0]
-        # logger.debug(f"{len(batch)=}")
-        x, target, length = batch["data"], batch["label"], batch["length"]
-        # logger.debug(f"{target.size()=}")
-        # From DALI to Torchvision format
-        x = x.permute(0, 3, 1, 2)
-        # target = target.squeeze(-1).int()
-        x = x.detach().clone()
-        target = target.detach().clone()
-        # logger.debug(f"{target.size()=}")
-        return x, target, length
+
+        batch["data"] = batch["data"].permute(0, 3, 1, 2)
+        batch["data"] = batch["data"].detach().clone()
+        batch["label"] = batch["label"].detach().clone()
+        return batch
     
     def __code__(self):
         return super().__code()
@@ -49,50 +44,17 @@ class ExternalInputCallable(object):
         random.shuffle(self.data)
 
     def __call__(self, sample_info):
-        # idx = sample_info.idx_in_epoch
         idx = sample_info.idx_in_epoch
         if idx >= len(self.data):
             logger.debug(f"Trigger skip with {idx=} and {len(self.data)=}")
             # Indicate end of the epoch
             raise StopIteration()
-        
-        max_retries = 5
-        retries = 0
-        success = False
-        
-        while not success and retries < max_retries:
-            try:
-                image_name, label = self.data[idx % len(self.data)]
-                image_path = os.path.join(self.data_path, image_name)
-                
-                if not os.path.exists(image_path):
-                    raise FileNotFoundError(f"Image not found: {image_path}")
-                    
-                try:
-                    with open(image_path, 'rb') as f:
-                        file_bytes = f.read()
-                    bytes_io = io.BytesIO(file_bytes)
+        image_name, label = self.data[idx % len(self.data)]
+        image_path = os.path.join(self.data_path, image_name)
 
-                    # image verify() don't work so use load()
-                    with Image.open(bytes_io) as img:
-                        img.load()
-
-                    image = np.frombuffer(file_bytes, dtype=np.uint8)
-                    encoded_label, length = self.converter.encode([label], batch_max_length=self.batch_max_length)
-                    # logger.debug(f"{encoded_label.size()=}")
-                    success = True
-                    
-                except (OSError, IOError) as e:
-                    print(f"Warning: Skipping corrupted image {image_path}: {str(e)}")
-                    idx = (idx + 1) % len(self.data)
-                    retries += 1
-                    
-            except (IOError, FileNotFoundError) as e:
-                print(f"Error loading image at index {idx}: {str(e)}")
-                idx = (idx + 1) % len(self.data)
-                retries += 1
+        with open(image_path, 'rb') as f:
+            file_bytes = f.read()
         
-        if not success:
-            raise RuntimeError(f"Failed to load a valid image after {max_retries} attempts starting from index {idx}")
-        
+        image = np.frombuffer(file_bytes, dtype=np.uint8)
+        encoded_label, length = self.converter.encode([label], batch_max_length=self.batch_max_length)
         return image, torch.squeeze(encoded_label), length

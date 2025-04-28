@@ -105,13 +105,9 @@ class OCRModel(LightningModule):
     #     self.trainer.datamodule.val_dataloader.run()
 
     def training_step(self, batch, batch_idx):
-
-        images = batch[0]
-        text_encoded = batch[1]
-        text_lengths = batch[2]
-        # images = batch["images"]
-        # labels = batch["labels"]
-        # labels = self.converter.decode(text_encoded)
+        images = batch["data"]
+        text_encoded = batch["label"]
+        text_lengths = batch["length"]
 
         if self.pred_name == "ctc":
             # Forward pass
@@ -132,9 +128,9 @@ class OCRModel(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        images = batch[0]
-        text_encoded = batch[1]
-        text_lengths = batch[2]
+        images = batch["data"]
+        text_encoded = batch["label"]
+        text_lengths = batch["length"]
         # text_encoded, text_lengths = self.converter.encode(labels, batch_max_length=self.batch_max_length)
         # logger.debug(f"{images.size()=}")
         # logger.debug(f"{text_encoded.size()=}")

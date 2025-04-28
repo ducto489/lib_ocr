@@ -80,6 +80,25 @@ unzip output.zip -d /path/to/data/folder
 
 The `tgt.csv` should contain image names and their corresponding text labels.
 
+### Cleaning the Dataset
+
+Before training, it's recommended to clean your dataset by removing any corrupted images that might cause errors during training:
+
+```bash
+python clean_image_dataset.py --data_path "/path/to/your/train"
+python clean_image_dataset.py --data_path "/path/to/your/val"
+```
+
+This script will:
+- Scan through all images in the dataset
+- Try to load each image and identify corrupted ones
+- Delete corrupted images that cannot be loaded
+- Update the `tgt.csv` file to remove entries for deleted images
+- Create a backup of the original `tgt.csv` file
+- Generate a log file with details of the cleaning process
+
+The script will output information about any corrupted images found and removed.
+
 ## Training
 
 Start training with the following command inside the `train.sh`:

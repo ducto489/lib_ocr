@@ -22,48 +22,15 @@ class OCRDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        # Try to get a valid image, if current idx fails, try the next one
-        original_idx = idx
-        max_retries = 10  # Limit retries to avoid infinite loops
-        retries = 0
+        image_name, label = self.data[idx]
+        image_path = os.path.join(self.data_path, 'images', image_name)
         
-        while retries < max_retries:
-            try:
-                image_name, label = self.data[idx]
-                image_path = os.path.join(self.data_path, 'images', image_name)
-                
-                # Check if image exists
-                if not os.path.exists(image_path):
-                    raise FileNotFoundError(f"Image not found: {image_path}")
-                    
-                # Use PIL's Image.open with error handling for truncated images
-                try:
-                    image = Image.open(image_path).convert('RGB')
-                except (OSError, IOError) as e:
-                    print(f"Warning: Skipping corrupted image {image_path}: {str(e)}")
-                    idx = (idx + 1) % len(self.data)  # Try next image
-                    retries += 1
-                    continue
-                
-                if self.transform:
-                    try:
-                        image = self.transform(image)
-                    except Exception as e:
-                        print(f"Transform failed for {image_path}: {str(e)}")
-                        idx = (idx + 1) % len(self.data)  # Try next image
-                        retries += 1
-                        continue
-                        
-                return image, label
-                
-            except (IOError, FileNotFoundError) as e:
-                print(f"Error loading image at index {idx}: {str(e)}")
-                idx = (idx + 1) % len(self.data)  # Try next image
-                retries += 1
+        image = Image.open(image_path).convert('RGB')
         
-        # If we've tried max_retries times and still failed, raise an exception
-        raise RuntimeError(f"Failed to load a valid image after {max_retries} attempts starting from index {original_idx}")
-
+        if self.transform:
+            image = self.transform(image)
+                
+        return image, label
 
 class ResizeNormalize(object):
 
