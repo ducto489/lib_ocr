@@ -7,6 +7,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from loguru import logger
 from torchmetrics.text import CharErrorRate, WordErrorRate
+import time
 
 from models import get_module
 from dataloader import OCRDataModule, DALI_OCRDataModule
@@ -64,6 +65,7 @@ class OCRModel(LightningModule):
         self.batch_max_length = batch_max_length
         self.save_dir = save_dir
         self.dali = dali
+        self.val_epoch_start_time = 0 # Because the sanity check fails
         logger.info(f"{self.dali=}")
 
     def _build_model(self):
@@ -100,12 +102,15 @@ class OCRModel(LightningModule):
         x = self.pred_module(x, text=text, is_train=self.training, batch_max_length=self.batch_max_length)
         return x
 
-    # def on_train_epoch_start(self):
-    #     logger.debug("Run the train_dataloader")
-    #     self.trainer.datamodule.train_dataloader.run()
+    def on_train_epoch_start(self):
+        # Start timing for training epoch
+        self.train_epoch_start_time = time.time()
+        logger.debug("Starting training epoch")
 
-    # def on_val_epoch_start(self):
-    #     self.trainer.datamodule.val_dataloader.run()
+    def on_val_epoch_start(self):
+        # Start timing for validation epoch
+        self.val_epoch_start_time = time.time()
+        logger.debug("Starting validation epoch")
 
     def training_step(self, batch, batch_idx):
         images = batch["data"]
@@ -193,6 +198,11 @@ class OCRModel(LightningModule):
         logger.info(f"Logged hyperparameters: {hyperparams}")
 
     def on_train_epoch_end(self):
+        # Calculate and log training epoch time
+        train_epoch_time = time.time() - self.train_epoch_start_time
+        logger.info(f"Training epoch {self.current_epoch} completed in {train_epoch_time:.2f} seconds")
+        self.log("train_epoch_time", train_epoch_time)
+
         # Save model after each training epoch
         epoch = self.current_epoch
         save_path = f"{self.save_dir}/model_train_epoch_{epoch}.ckpt"
@@ -208,6 +218,11 @@ class OCRModel(LightningModule):
         self.val_targets = []
 
     def on_validation_epoch_end(self):
+        # Calculate and log validation epoch time
+        val_epoch_time = time.time() - self.val_epoch_start_time
+        logger.info(f"Validation epoch {self.current_epoch} completed in {val_epoch_time:.2f} seconds")
+        self.log("val_epoch_time", val_epoch_time)
+
         # Calculate and log CER
         cer = self.cer(self.val_predictions, self.val_targets)
         self.log("val_cer", cer, prog_bar=True)
