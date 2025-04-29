@@ -2,7 +2,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from nvidia.dali.plugin.pytorch import LastBatchPolicy
 
-from data import OCRDataset, OCRCollator, data_transforms, process_tgt, Vocab, ExternalInputCallable, LightningWrapper
+from data import OCRDataset, OCRCollator, data_transforms, data_transforms_2, process_tgt, Vocab, ExternalInputCallable, LightningWrapper
 from utils import AttnLabelConverter, CTCLabelConverter
 from loguru import logger
 import os
@@ -44,7 +44,7 @@ class OCRDataModule(LightningDataModule):
     def train_dataloader(self):
         self.train_data = OCRDataset(
             self.train_data_path,
-            transform=data_transforms["train"],
+            transform=data_transforms_2["train"],
             batch_max_length=self.batch_max_length,
             pred_name=self.pred_name
         )
@@ -61,7 +61,7 @@ class OCRDataModule(LightningDataModule):
     def val_dataloader(self):
         self.val_data = OCRDataset(
             self.val_data_path,
-            transform=data_transforms["val"],
+            transform=data_transforms_2["val"],
             batch_max_length=self.batch_max_length,
             pred_name=self.pred_name
         )
