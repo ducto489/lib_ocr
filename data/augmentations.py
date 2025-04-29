@@ -63,25 +63,26 @@ data_transforms_2 = {
     ),
 }
 
+# TODO: Fix albumentations
 # TODO: albumentations use openCV to read file. Now I use the PIL to read file. https://insightface.ai/docs/examples/migrating_from_torchvision_to_albumentations/
 # Albumentations version of data_transforms_2
-albu_transforms = {
-    "train": A.Compose([
-        AlbumentationsScaling(height=100),
-        A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        A.Affine(scale=(0.9, 1.1), rotate=(-5, 5), p=1.0),
-        A.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        ),
-        ToTensorV2(),
-    ]),
-    "val": A.Compose([
-        AlbumentationsScaling(height=100),
-        A.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        ),
-        ToTensorV2(),
-    ]),
-}
+# albu_transforms = {
+#     "train": A.Compose([
+#         AlbumentationsScaling(height=100),
+#         A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+#         A.Affine(scale=(0.9, 1.1), rotate=(-5, 5), p=1.0),
+#         A.Normalize(
+#             mean=[0.485, 0.456, 0.406],
+#             std=[0.229, 0.224, 0.225],
+#         ),
+#         ToTensorV2(),
+#     ]),
+#     "val": A.Compose([
+#         AlbumentationsScaling(height=100),
+#         A.Normalize(
+#             mean=[0.485, 0.456, 0.406],
+#             std=[0.229, 0.224, 0.225],
+#         ),
+#         ToTensorV2(),
+#     ]),
+# }
