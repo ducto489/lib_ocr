@@ -27,12 +27,11 @@ def cli_main():
     import sys
 
     # Check if --data.dali True is in the command line arguments
+    use_dali = False
     for i, arg in enumerate(sys.argv):
         if arg == "--data.dali" and i + 1 < len(sys.argv) and sys.argv[i + 1].lower() == "true":
             use_dali = True
             break
-        else:
-            use_dali = False
 
     # Use DALI_OCRDataModule if --data.dali True, otherwise use OCRDataModule
     data_module = DALI_OCRDataModule if use_dali else OCRDataModule
