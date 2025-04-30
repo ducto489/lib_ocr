@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Read the CSV file
-csv_file = 'wandb_export_2025-04-29T21_04_30.691+07_00.csv'
+csv_file = '/hdd1t/mduc/ocr/lib_ocr/experiment/wandb_export_2025-04-30T17_37_05.262+07_00.csv'
 df = pd.read_csv(csv_file)
 
 # Extract the GPU utilization column
-gpu_utilization = df['train50-no-dali - system/gpu.0.gpu']
+gpu_utilization = df['train50-dali - system/gpu.0.gpu']
 
 # Print basic statistics
 print("Basic statistics for GPU utilization:")
@@ -21,7 +21,7 @@ print(f"Standard Deviation: {gpu_utilization.std():.2f}%")
 # Create a histogram
 plt.figure(figsize=(10, 6))
 plt.hist(gpu_utilization, bins=100, alpha=0.7, color='blue', edgecolor='black')
-plt.title('Distribution of GPU Utilization (train50-no-dali)', fontsize=16)
+plt.title('Distribution of GPU Utilization (train50-dali)', fontsize=16)
 plt.xlabel('GPU Utilization (%)', fontsize=14)
 plt.ylabel('Frequency', fontsize=14)
 plt.grid(axis='y', alpha=0.75)
@@ -36,7 +36,7 @@ plt.legend()
 # plt.tight_layout()
 
 # Save the histogram
-plt.savefig('gpu_utilization_histogram.png', dpi=300)
+plt.savefig('gpu_utilization_dali_histogram.png', dpi=300)
 print("Histogram saved as 'gpu_utilization_histogram.png'")
 
 # Show the histogram
