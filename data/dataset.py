@@ -13,12 +13,12 @@ from data.vocab import Vocab
 
 
 class OCRDataset(Dataset):
-    def __init__(self, data_path, batch_max_length, pred_name="attn", transform=None):
+    def __init__(self, data_path, batch_max_length, frac, pred_name="attn", transform=None):
         self.data_path = data_path
         self.transform = transform
         self.batch_max_length = batch_max_length
         
-        images, labels = process_tgt(data_path, batch_max_length)
+        images, labels = process_tgt(data_path, batch_max_length, frac=frac)
         self.data = list(zip(images, labels)) #list(zip(df['image_name'], df['label']))
         logger.debug("Get Vocab")
         path = os.path.join(self.data_path, "tgt.csv")
@@ -126,8 +126,8 @@ class AlignCollate(object):
 
         return image_tensors, labels
     
-def process_tgt(data_path, batch_max_length):
-        # Check for tgt.csv file
+def process_tgt(data_path, batch_max_length, frac):
+    # Check for tgt.csv file
     tgt_path = os.path.join(data_path, 'tgt.csv')
     if not os.path.exists(tgt_path):
         raise FileNotFoundError(f"Label file not found at {tgt_path}")
@@ -155,7 +155,7 @@ def process_tgt(data_path, batch_max_length):
     
     # Filter out samples exceeding batch_max_length
     total_samples = len(df)
-    df = df[df['label'].str.len() <= batch_max_length]#.sample(frac=0.01, random_state=42)
+    df = df[df['label'].str.len() <= batch_max_length].sample(frac=frac, random_state=42)
     filtered_samples = total_samples - len(df)
     if filtered_samples > 0:
         print(f"Filtered out {filtered_samples} samples ({filtered_samples/total_samples*100:.2f}%) exceeding max length {batch_max_length}")

@@ -15,6 +15,7 @@ class OCRDataModule(LightningDataModule):
     def __init__(
         self,
         batch_max_length,
+        frac,
         dali: bool = False,
         train_data_path: str = "./training_images/",
         val_data_path: str = "./validation_images/",
@@ -36,6 +37,7 @@ class OCRDataModule(LightningDataModule):
         self.batch_max_length = batch_max_length
         self.dali = dali
         self.pred_name = pred_name
+        self.frac = frac
         self.collator = OCRCollator()
 
         # Save hyperparameters for logging
@@ -46,7 +48,8 @@ class OCRDataModule(LightningDataModule):
             self.train_data_path,
             transform=data_transforms_2["train"],
             batch_max_length=self.batch_max_length,
-            pred_name=self.pred_name
+            pred_name=self.pred_name,
+            frac=self.frac
         )
         return DataLoader(
             self.train_data,
@@ -63,7 +66,8 @@ class OCRDataModule(LightningDataModule):
             self.val_data_path,
             transform=data_transforms_2["val"],
             batch_max_length=self.batch_max_length,
-            pred_name=self.pred_name
+            pred_name=self.pred_name,
+            frac=self.frac
         )
         return DataLoader(
             self.val_data,
@@ -78,6 +82,7 @@ class DALI_OCRDataModule(LightningDataModule):
     def __init__(
         self,
         batch_max_length,
+        frac,
         dali : bool = True,
         train_data_path: str = "./training_images/",
         val_data_path: str = "./validation_images/",
@@ -112,12 +117,9 @@ class DALI_OCRDataModule(LightningDataModule):
         else:
             self.converter = AttnLabelConverter(vocab, device="cpu")
         logger.debug("Processing tgt.csv file")
-        self.train_images_names, self.train_labels = process_tgt(self.train_data_path, batch_max_length=self.batch_max_length)
-        self.val_images_names, self.val_labels = process_tgt(self.val_data_path, batch_max_length=self.batch_max_length)
+        self.train_images_names, self.train_labels = process_tgt(self.train_data_path, batch_max_length=self.batch_max_length, frac=frac)
+        self.val_images_names, self.val_labels = process_tgt(self.val_data_path, batch_max_length=self.batch_max_length, frac=frac)
         logger.debug("Done!")
-        # self.train_labels = converter.encode(self.train_labels, batch_max_length=self.batch_max_length)
-        # self.val_labels = converter.encode(self.val_labels, batch_max_length=self.batch_max_length)
-        # logger.debug("Done!")
         logger.debug(f"{len(self.train_images_names)=}")
         logger.debug(f"{self.batch_size=}")
         self.steps_per_epoch = len(self.train_images_names) // self.batch_size
@@ -127,13 +129,9 @@ class DALI_OCRDataModule(LightningDataModule):
 
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
-        train_pipeline = self.get_dali_train_pipeline(batch_size=self.batch_size, num_threads=self.num_workers)
+        train_pipeline = self.get_dali_train_pipeline_aug(batch_size=self.batch_size, num_threads=self.num_workers)
         train_pipeline.build()
         logger.debug("Train DALI pipelines built.")
-        # self.train_dataloader = DALIClassificationIterator(
-        #     pipelines=train_pipeline,
-        #     auto_reset=True,
-        # )
 
         self.train_dataloader = LightningWrapper(
             pipelines=train_pipeline,
