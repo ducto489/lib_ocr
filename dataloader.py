@@ -173,7 +173,6 @@ class DALI_OCRDataModule(LightningDataModule):
                 steps_per_epoch = self.steps_per_epoch,
                 data_path = self.train_data_path,
                 converter = self.converter,
-                transform=data_transforms["train"],
                 batch_max_length=self.batch_max_length,
                 images_names = self.train_images_names,
                 labels = self.train_labels,
@@ -183,18 +182,17 @@ class DALI_OCRDataModule(LightningDataModule):
             batch=False,
             parallel=True,
             dtype=[types.UINT8, types.INT64, types.INT64],
-            prefetch_queue_depth=2,
+            prefetch_queue_depth=8,
         )
-        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
-        images = fn.resize(images, resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, dtype=types.FLOAT)
+        images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
+        images = fn.resize(images, device="cpu", resize_y=100, dtype=types.FLOAT)
+        images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
         # images = images.gpu()
-        indices = indices.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)
-        return images, indices, length
+        return images.gpu(), indices.gpu(), length.gpu()
 
     @pipeline_def(num_threads=8, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
     def get_dali_val_pipeline(self):
@@ -204,7 +202,6 @@ class DALI_OCRDataModule(LightningDataModule):
                 steps_per_epoch = len(self.val_images_names) // self.batch_size,
                 data_path = self.val_data_path,
                 converter = self.converter,
-                transform=data_transforms["val"],
                 batch_max_length=self.batch_max_length,
                 images_names = self.val_images_names,
                 labels = self.val_labels,
@@ -214,65 +211,64 @@ class DALI_OCRDataModule(LightningDataModule):
             batch=False,
             parallel=True,
             dtype=[types.UINT8, types.INT64, types.INT64],
-            prefetch_queue_depth=2,
+            prefetch_queue_depth=8,
         )
-        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
-        images = fn.resize(images, resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, dtype=types.FLOAT)
+        images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
+        images = fn.resize(images, device="cpu", resize_y=100, dtype=types.FLOAT)
+        images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
         # images = images.gpu()
-        indices = indices.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)
-        return images, indices, length
+        return images.gpu(), indices.gpu(), length.gpu()
 
-    @pipeline_def(num_threads=8, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
-    def get_dali_train_pipeline_aug(self):
-        # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
-        images, indices, length = fn.external_source(
-            source=ExternalInputCallable(
-                steps_per_epoch = self.steps_per_epoch,
-                data_path = self.train_data_path,
-                converter = self.converter,
-                transform=data_transforms["train"],
-                batch_max_length=self.batch_max_length,
-                images_names = self.train_images_names,
-                labels = self.train_labels,
-                batch_size=self.batch_size
-            ),
-            num_outputs=3,
-            batch=False,
-            parallel=True,
-            dtype=[types.UINT8, types.INT64, types.INT64],
-            prefetch_queue_depth=2,
-        )
-        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
-        images = fn.resize(images, resize_y=100, dtype=types.FLOAT)
+    # @pipeline_def(num_threads=8, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
+    # def get_dali_train_pipeline_aug(self):
+    #     # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
+    #     images, indices, length = fn.external_source(
+    #         source=ExternalInputCallable(
+    #             steps_per_epoch = self.steps_per_epoch,
+    #             data_path = self.train_data_path,
+    #             converter = self.converter,
+    #             transform=data_transforms["train"],
+    #             batch_max_length=self.batch_max_length,
+    #             images_names = self.train_images_names,
+    #             labels = self.train_labels,
+    #             batch_size=self.batch_size
+    #         ),
+    #         num_outputs=3,
+    #         batch=False,
+    #         parallel=True,
+    #         dtype=[types.UINT8, types.INT64, types.INT64],
+    #         prefetch_queue_depth=1,
+    #     )
+    #     images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
+    #     images = fn.resize(images, resize_y=100, dtype=types.FLOAT)
 
-        # Apply brightness and contrast adjustment
-        images = fn.brightness_contrast(images,
-                                       brightness=0.2,  # Brightness adjustment factor
-                                       contrast=0.2)    # Contrast adjustment factor
+    #     # Apply brightness and contrast adjustment
+    #     images = fn.brightness_contrast(images,
+    #                                    brightness=0.2,  # Brightness adjustment factor
+    #                                    contrast=0.2)    # Contrast adjustment factor
 
-        # Apply HSV color space adjustment
-        images = fn.hsv(images,
-                       hue=0.1,        # Hue adjustment
-                       saturation=0.2, # Saturation adjustment
-                       value=0.1)      # Value adjustment
+    #     # Apply HSV color space adjustment
+    #     images = fn.hsv(images,
+    #                    hue=0.1,        # Hue adjustment
+    #                    saturation=0.2, # Saturation adjustment
+    #                    value=0.1)      # Value adjustment
 
-        # TODO: Use a better affine matrix
-        # Apply affine transformation
-        images = fn.warp_affine(images,
-                                matrix=[1.0, 0.1, 0.0, 0.1, 1.0, 0.0],  # 2x3 affine transformation matrix
-                                fill_value=0,
-                                interp_type=types.INTERP_NN)
+    #     # TODO: Use a better affine matrix
+    #     # Apply affine transformation
+    #     images = fn.warp_affine(images,
+    #                             matrix=[1.0, 0.1, 0.0, 0.1, 1.0, 0.0],  # 2x3 affine transformation matrix
+    #                             fill_value=0,
+    #                             interp_type=types.INTERP_NN)
 
-        images = fn.normalize(images, dtype=types.FLOAT)
-        # images = images.gpu()
-        indices = indices.gpu()
-        # images = fn.cast(images, dtype=types.FLOAT)
-        images = fn.pad(images, fill_value=0)
-        indices = fn.pad(indices, fill_value=0)
-        length = fn.pad(length, fill_value=0)
-        return images, indices, length
+    #     images = fn.normalize(images, dtype=types.FLOAT)
+    #     # images = images.gpu()
+    #     indices = indices.gpu()
+    #     # images = fn.cast(images, dtype=types.FLOAT)
+    #     images = fn.pad(images, fill_value=0)
+    #     indices = fn.pad(indices, fill_value=0)
+    #     length = fn.pad(length, fill_value=0)
+    #     return images, indices, length

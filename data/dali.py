@@ -29,9 +29,8 @@ class LightningWrapper(DALIGenericIterator):
         return super().__code()
             
 class ExternalInputCallable(object):
-    def __init__(self, steps_per_epoch, data_path, converter, images_names, labels, batch_max_length, transform=None, batch_size=32):
+    def __init__(self, steps_per_epoch, data_path, converter, images_names, labels, batch_max_length, batch_size=32):
         self.data_path = data_path
-        self.transform = transform
         self.batch_max_length = batch_max_length
         self.steps_per_epoch = steps_per_epoch
         self.converter = converter

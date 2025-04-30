@@ -5,7 +5,7 @@ python cli.py fit \
     --data.val_data_path "/home/qsvm/dataset/val" \
     --data.batch_size 64 \
     --data.num_workers 8 \
-    --data.dali False \
+    --data.dali True \
     --model.backbone_name "resnet18" \
     --model.seq_name "bilstm" \
     --model.pred_name "attn" \

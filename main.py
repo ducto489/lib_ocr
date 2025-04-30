@@ -107,11 +107,6 @@ class OCRModel(LightningModule):
         self.train_epoch_start_time = time.time()
         logger.debug("Starting training epoch")
 
-    def on_val_epoch_start(self):
-        # Start timing for validation epoch
-        self.val_epoch_start_time = time.time()
-        logger.debug("Starting validation epoch")
-
     def training_step(self, batch, batch_idx):
         images = batch["data"]
         text_encoded = batch["label"]
@@ -216,6 +211,11 @@ class OCRModel(LightningModule):
         # Reset stored predictions and targets
         self.val_predictions = []
         self.val_targets = []
+
+        # Start timing for validation epoch
+        self.val_epoch_start_time = time.time()
+        logger.debug("Starting validation epoch")
+
 
     def on_validation_epoch_end(self):
         # Calculate and log validation epoch time
