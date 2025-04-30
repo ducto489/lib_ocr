@@ -43,7 +43,7 @@ class OCRModel(LightningModule):
         if self.pred_name == "ctc":
             self.converter = CTCLabelConverter_clovaai(self.vocab, device="cuda")
         else:
-            self.converter = AttnLabelConverter(self.vocab)
+            self.converter = AttnLabelConverter(self.vocab, batch_max_length=batch_max_length)
         self._build_model()
 
         # TODO: add optimizer, scheduler, loss, metrics

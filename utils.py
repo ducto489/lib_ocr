@@ -131,13 +131,15 @@ class CTCLabelConverter_clovaai(object):
 
 
 class AttnLabelConverter:
-    def __init__(self, character, device="cuda"):
+    def __init__(self, character, batch_max_length, device="cuda"):
         list_token = ['[GO]', '[EOS]']
         self.character = list_token + list(character)
         self.device = device
+        self.batch_max_length = batch_max_length
         self.dict = {char: idx for idx, char in enumerate(self.character)}
 
-    def encode(self, text, batch_max_length):
+    
+    def encode(self, text):
         """convert text-label into text-index."""
         length = [len(s) + 1 for s in text]
         batch_max_length += 1

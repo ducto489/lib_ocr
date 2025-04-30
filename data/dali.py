@@ -29,9 +29,8 @@ class LightningWrapper(DALIGenericIterator):
         return super().__code()
             
 class ExternalInputCallable(object):
-    def __init__(self, steps_per_epoch, data_path, converter, images_names, labels, batch_max_length, batch_size=32):
+    def __init__(self, steps_per_epoch, data_path, converter, images_names, labels, batch_size=32):
         self.data_path = data_path
-        self.batch_max_length = batch_max_length
         self.steps_per_epoch = steps_per_epoch
         self.converter = converter
         self.batch_size = batch_size
@@ -55,5 +54,14 @@ class ExternalInputCallable(object):
             file_bytes = f.read()
         
         image = np.frombuffer(file_bytes, dtype=np.uint8)
-        encoded_label, length = self.converter.encode([label], batch_max_length=self.batch_max_length)
+        encoded_label, length = self.converter.encode([label])
         return image, torch.squeeze(encoded_label), length
+    
+class ExternalEncodeCallable(object):
+    def __init__(self, converter):
+        self.converter = converter
+
+    def __call__(self, label, sample_info):
+        idx = sample_info.idx_in_epoch
+        encoded_label, length = self.converter.encode(label)
+        return encoded_label, length

@@ -27,7 +27,7 @@ class OCRDataset(Dataset):
         if pred_name=="ctc":
             self.converter = CTCLabelConverter(vocab, device="cpu")
         else:
-            self.converter = AttnLabelConverter(vocab, device="cpu")
+            self.converter = AttnLabelConverter(vocab, batch_max_length=self.batch_max_length, device="cpu")
 
     def __len__(self):
         return len(self.data)
@@ -41,7 +41,7 @@ class OCRDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         
-        encoded_label, length = self.converter.encode([label], batch_max_length=self.batch_max_length)
+        encoded_label, length = self.converter.encode([label])
 
         return image, torch.squeeze(encoded_label), length
 
