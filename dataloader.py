@@ -134,7 +134,7 @@ class DALI_OCRDataModule(LightningDataModule):
 
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
-        train_pipeline = self.get_dali_val_pipeline_webdataset(batch_size=self.batch_size, num_threads=self.num_workers)
+        train_pipeline = self.get_dali_train_pipeline_aug(batch_size=self.batch_size, num_threads=self.num_workers)
         train_pipeline.build()
         logger.debug("Train DALI pipelines built.")
 
@@ -151,7 +151,7 @@ class DALI_OCRDataModule(LightningDataModule):
 
     def val_dataloader(self):
         logger.debug("Building val DALI pipelines...")
-        val_pipeline = self.get_dali_val_pipeline_webdataset(batch_size=self.batch_size, num_threads=self.num_workers)
+        val_pipeline = self.get_dali_val_pipeline(batch_size=self.batch_size, num_threads=self.num_workers)
         val_pipeline.build()
         logger.debug("Val DALI pipelines built.")
         # self.val_dataloader = DALIClassificationIterator(
@@ -176,7 +176,6 @@ class DALI_OCRDataModule(LightningDataModule):
                 steps_per_epoch = self.steps_per_epoch,
                 data_path = self.train_data_path,
                 converter = self.converter,
-                batch_max_length=self.batch_max_length,
                 images_names = self.train_images_names,
                 labels = self.train_labels,
                 batch_size=self.batch_size
@@ -205,7 +204,6 @@ class DALI_OCRDataModule(LightningDataModule):
                 steps_per_epoch = len(self.val_images_names) // self.batch_size,
                 data_path = self.val_data_path,
                 converter = self.converter,
-                batch_max_length=self.batch_max_length,
                 images_names = self.val_images_names,
                 labels = self.val_labels,
                 batch_size=self.batch_size
@@ -233,7 +231,6 @@ class DALI_OCRDataModule(LightningDataModule):
                 steps_per_epoch = self.steps_per_epoch,
                 data_path = self.train_data_path,
                 converter = self.converter,
-                batch_max_length=self.batch_max_length,
                 images_names = self.train_images_names,
                 labels = self.train_labels,
                 batch_size=self.batch_size

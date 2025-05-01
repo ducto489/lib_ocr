@@ -142,6 +142,7 @@ class AttnLabelConverter:
     def encode(self, text):
         """convert text-label into text-index."""
         length = [len(s) + 1 for s in text]
+        batch_max_length = self.batch_max_length
         batch_max_length += 1
         batch_text = torch.zeros(len(text), batch_max_length + 1).long()
         for i, t in enumerate(text):
