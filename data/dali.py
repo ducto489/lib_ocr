@@ -56,12 +56,3 @@ class ExternalInputCallable(object):
         image = np.frombuffer(file_bytes, dtype=np.uint8)
         encoded_label, length = self.converter.encode([label])
         return image, torch.squeeze(encoded_label), length
-    
-class ExternalEncodeCallable(object):
-    def __init__(self, converter):
-        self.converter = converter
-
-    def __call__(self, label, sample_info):
-        idx = sample_info.idx_in_epoch
-        encoded_label, length = self.converter.encode(label)
-        return encoded_label, length

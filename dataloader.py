@@ -126,11 +126,7 @@ class DALI_OCRDataModule(LightningDataModule):
         logger.debug(f"{self.steps_per_epoch=}")
         self.train_data_path = os.path.join(self.train_data_path, "images")
         self.val_data_path = os.path.join(self.val_data_path, "images")
-        
-        self.train_shard_pattern = os.path.join(train_data_path, 'ocr-shard-*.tar') 
-        self.train_index_pattern = os.path.join(train_data_path, 'ocr-shard-*.idx.txt') 
-        self.val_shard_pattern = os.path.join(val_data_path, 'ocr-shard-*.tar') 
-        self.val_index_pattern = os.path.join(val_data_path, 'ocr-shard-*.idx.txt') 
+
 
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
@@ -248,63 +244,6 @@ class DALI_OCRDataModule(LightningDataModule):
         images = fn.warp_affine(images, matrix=fn.transforms.scale(scale=fn.random.uniform(range=[0.9, 1], shape=[2])), fill_value=0, inverse_map=False)
         images = fn.noise.gaussian(images, mean=0.0, stddev=fn.random.uniform(range=[-10, 10])) 
         images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
-        images = fn.pad(images, fill_value=0)
-        indices = fn.pad(indices, fill_value=0)
-        length = fn.pad(length, fill_value=0)
-        return images.gpu(), indices.gpu(), length.gpu()
-    
-    @pipeline_def(num_threads=8, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
-    def get_dali_train_pipeline_webdataset(self):
-        images, labels = fn.readers.webdataset(
-            paths=self.train_shard_pattern, 
-            index_paths=self.train_index_pattern,
-            ext=["jpg", "txt"], # Specify ALL extensions you stored
-            missing_component_behavior="skip", # Or "skip" or "empty"
-            random_shuffle=True,
-        )
-        encoder = fn.external_source(
-            source=ExternalEncodeCallable(self.converter), 
-            num_outputs=2, 
-            batch=True, 
-            parallel=True,
-            dtype=[types.INT64, types.INT64]
-        )
-        indices, length = encoder(labels)
-        images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
-        images = fn.rotate(images, device="cpu", angle=fn.random.uniform(range=[-1, 1]), dtype=types.FLOAT)
-        images = fn.resize(images, device="cpu", resize_y=100)
-        images = fn.color_twist(images, brightness=fn.random.uniform(range=[0.8, 1.2]), contrast=fn.random.uniform(range=[0.8, 1.2]), saturation=fn.random.uniform(range=[0.8, 1.2]), hue=fn.random.uniform(range=[0, 0.3]))
-        images = fn.warp_affine(images, matrix=fn.transforms.scale(scale=fn.random.uniform(range=[0.9, 1], shape=[2])), fill_value=0, inverse_map=False)
-        images = fn.noise.gaussian(images, mean=0.0, stddev=fn.random.uniform(range=[-10, 10])) 
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
-        images = fn.pad(images, fill_value=0)
-        indices = fn.pad(indices, fill_value=0)
-        length = fn.pad(length, fill_value=0)
-        return images.gpu(), indices.gpu(), length.gpu()
-
-    @pipeline_def(num_threads=8, batch_size=32, device_id=0, py_start_method="spawn", exec_dynamic=True)
-    def get_dali_val_pipeline_webdataset(self):
-        # images, _ = fn.readers.file(file_root=self.val_data_path, files=self.val_data_path, random_shuffle=False, name="Reader")
-        images, labels = fn.readers.webdataset(
-            paths=self.train_shard_pattern, 
-            index_paths=self.train_index_pattern,
-            ext=["jpg", "txt"], # Specify ALL extensions you stored
-            missing_component_behavior="skip", # Or "skip" or "empty"
-            random_shuffle=False,
-        )
-        encoder = fn.external_source(
-            source=ExternalEncodeCallable(self.converter), 
-            num_outputs=2, 
-            batch=True, 
-            parallel=True, 
-            dtype=[types.INT64, types.INT64]
-        )
-        indices, length = encoder(labels)
-        images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
-        images = fn.resize(images, device="cpu", resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
-        # images = images.gpu()
-        # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)
