@@ -2,7 +2,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from nvidia.dali.plugin.pytorch import LastBatchPolicy
 
-from data import OCRDataset, OCRCollator, data_transforms, data_transforms_2, process_tgt, Vocab, ExternalInputCallable, LightningWrapper, ExternalEncodeCallable
+from data import OCRDataset, OCRCollator, data_transforms, data_transforms_2, process_tgt, Vocab, ExternalInputCallable, LightningWrapper
 from utils import AttnLabelConverter, CTCLabelConverter
 from loguru import logger
 import os
