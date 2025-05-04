@@ -5,7 +5,7 @@ import io # For handling potential encoding issues
 
 # --- Configuration ---
 csv_file_path = '/home/qsvm/dataset/train/tgt.csv' # Your input CSV file
-output_dir = '/home/qsvm/webdataset_2/train' # Where to save the .tar files
+output_dir = '/home/qsvm/webdataset/train' # Where to save the .tar files
 shard_pattern = os.path.join(output_dir, 'ocr-shard-%06d.tar') # Naming pattern for shards
 max_samples_per_shard = 30000 # How many samples (image+label pairs) per shard? Adjust as needed.
 # --- End Configuration ---

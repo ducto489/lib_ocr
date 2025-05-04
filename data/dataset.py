@@ -22,7 +22,7 @@ class OCRDataset(Dataset):
         self.data = list(zip(images, labels)) #list(zip(df['image_name'], df['label']))
         logger.debug("Get Vocab")
         path = os.path.join(self.data_path, "tgt.csv")
-        vocab = Vocab(path).get_vocab_csv()
+        vocab = Vocab().get_vocab()
         logger.debug(f"{pred_name=}")
         if pred_name=="ctc":
             self.converter = CTCLabelConverter(vocab, device="cpu")

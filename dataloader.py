@@ -110,7 +110,7 @@ class DALI_OCRDataModule(LightningDataModule):
 
         logger.debug("Get Vocab")
         path = os.path.join(self.train_data_path, "tgt.csv")
-        vocab = Vocab(path).get_vocab_csv()
+        vocab = Vocab().get_vocab()
         logger.debug(f"{pred_name=}")
         if pred_name=="ctc":
             self.converter = CTCLabelConverter(vocab, device="cpu")

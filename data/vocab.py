@@ -5,21 +5,16 @@ import pandas as pd
 
 
 class Vocab:
-    def __init__(self, label_path):
+    def __init__(self):
         """
         Initialize vocabulary from labels file
         Args:
             label_path: Path to labels file (CSV or JSON)
         """
-        self.label_path = label_path
-        if self.label_path.endswith('.csv'):
-            self.vocab = self.get_vocab_csv()
-        else:
-            self.vocab = self.get_vocab()
 
-    def get_vocab(self):
+    def get_vocab_json(self, label_path):
         """Get vocabulary from JSON file"""
-        with open(self.label_path, 'r') as f:
+        with open(label_path, 'r') as f:
             data = json.load(f)
         data = data['labels']
         vocab = set()
@@ -27,12 +22,12 @@ class Vocab:
             vocab.update(list(label))
         return list(vocab)
 
-    def get_vocab_csv(self):
+    def get_vocab_csv(self, label_path):
         """Get vocabulary from CSV file with Unicode support"""
         # Try different encodings for Vietnamese text
         for encoding in ['utf-8', 'utf-8-sig', 'utf-16']:
             try:
-                df = pd.read_csv(self.label_path, encoding=encoding)
+                df = pd.read_csv(label_path, encoding=encoding)
                 break
             except UnicodeDecodeError:
                 continue
@@ -58,13 +53,9 @@ class Vocab:
                 raise ValueError(f"Error reading Vietnamese characters file: {str(e)}")
 
         return sorted(list(vocab))  # Sort for consistent ordering
-
-
-if __name__ == '__main__':
-    # Use the correct folder name
-    vocab = Vocab('/hdd1t/mduc/data/train/tgt.csv')
-    vocab_list = vocab.get_vocab_csv()
-    print(f"Vocabulary size: {len(vocab_list)}")
-    print("\nVocabulary list:")
-    for i, char in enumerate(vocab_list):
-        print(f"{i+1:3d}. '{char}'")
+    
+    def get_vocab(self):
+        char_path = os.path.join(os.path.dirname(__file__), 'vocab.txt')
+        with open(char_path, 'r', encoding='utf-8') as f:
+            vocab = set(f.read().splitlines())
+        return sorted(list(vocab))

@@ -39,7 +39,7 @@ class OCRModel(LightningModule):
         self.seq_name = seq_name
         self.pred_name = pred_name
         path = os.path.join(train_data_path, "tgt.csv")
-        self.vocab = Vocab(path).get_vocab_csv()
+        self.vocab = Vocab().get_vocab()
         if self.pred_name == "ctc":
             self.converter = CTCLabelConverter_clovaai(self.vocab, device="cuda")
         else:
