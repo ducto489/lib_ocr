@@ -1,16 +1,11 @@
 from pytorch_lightning import LightningModule
-from pytorch_lightning import Trainer
-from pytorch_lightning.loggers import WandbLogger
 import torch
 from torch import nn
-from torch.optim import Adam
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from loguru import logger
 from torchmetrics.text import CharErrorRate, WordErrorRate
 import time
 
 from models import get_module
-from dataloader import OCRDataModule, DALI_OCRDataModule
 from utils import SentenceErrorRate
 
 from utils import CTCLabelConverter_clovaai, AttnLabelConverter
@@ -19,6 +14,7 @@ from data.vocab import Vocab
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class OCRModel(LightningModule):
     def __init__(
@@ -65,14 +61,12 @@ class OCRModel(LightningModule):
         self.batch_max_length = batch_max_length
         self.save_dir = save_dir
         self.dali = dali
-        self.val_epoch_start_time = 0 # Because the sanity check fails
+        self.val_epoch_start_time = 0  # Because the sanity check fails
         logger.info(f"{self.dali=}")
 
     def _build_model(self):
         logger.info(f"{self.backbone_name}")
-        backbone_cls, seq_module_cls, pred_module_cls = get_module(
-            self.backbone_name, self.seq_name, self.pred_name
-        )
+        backbone_cls, seq_module_cls, pred_module_cls = get_module(self.backbone_name, self.seq_name, self.pred_name)
 
         # Initialize backbone
         self.backbone = backbone_cls(input_channels=3, output_channels=512)
@@ -92,7 +86,7 @@ class OCRModel(LightningModule):
         )  # When no seq_module, use channel size from VGG
         self.pred_module = pred_module_cls(
             input_dim=input_dim,
-            num_classes=len(self.converter.character) #len(self.vocab),  # Number of classes including blank token
+            num_classes=len(self.converter.character),  # len(self.vocab),  # Number of classes including blank token
         )
 
     def forward(self, x, text):
@@ -216,7 +210,6 @@ class OCRModel(LightningModule):
         self.val_epoch_start_time = time.time()
         logger.debug("Starting validation epoch")
 
-
     def on_validation_epoch_end(self):
         # Calculate and log validation epoch time
         val_epoch_time = time.time() - self.val_epoch_start_time
@@ -250,7 +243,7 @@ class OCRModel(LightningModule):
         self.val_targets = []
         # Reset
         if self.dali:
-             self.trainer.datamodule.val_dataloader.reset()
+            self.trainer.datamodule.val_dataloader.reset()
 
     def evaluate(self, batch, batch_idx):
         # TODO: implement evaluation

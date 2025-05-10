@@ -3,7 +3,6 @@ from torchvision import transforms
 
 
 class OCRCollator:
-
     def __init__(self):
         self.to_tensor = transforms.ToTensor()  # Convert PIL image to tensor
 
@@ -18,8 +17,7 @@ class OCRCollator:
 
         # Create a tensor to hold the padded images
         max_width = max(widths)
-        padded_imgs = torch.zeros((len(images), channels, height, max_width),
-                                  dtype=torch.float32)
+        padded_imgs = torch.zeros((len(images), channels, height, max_width), dtype=torch.float32)
 
         # Copy each image into the tensor with padding
         for i, img in enumerate(images):
@@ -30,13 +28,12 @@ class OCRCollator:
             if orig_width < max_width:
                 padded_imgs[i, :, :, orig_width:] = img[:, :, -1].unsqueeze(2)
 
-        padded_labels = torch.zeros((len(encoded_labels), encoded_labels[0].size(0)),
-                                  dtype=torch.int64)
+        padded_labels = torch.zeros((len(encoded_labels), encoded_labels[0].size(0)), dtype=torch.int64)
         for i, label in enumerate(encoded_labels):
             padded_labels[i] = label
 
         return {
             "data": padded_imgs,  # Batched image tensor
             "label": padded_labels,  # Padded encoded labels
-            "length": torch.tensor(lengths).squeeze()  # Lengths of original labels
+            "length": torch.tensor(lengths).squeeze(),  # Lengths of original labels
         }

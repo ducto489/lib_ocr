@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytorch_lightning import LightningModule
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class CTC(nn.Module):
     def __init__(self, input_dim, num_classes):
         super().__init__()
-        self.fc = nn.Linear(input_dim, num_classes + 1) # +1 for blank token
+        self.fc = nn.Linear(input_dim, num_classes + 1)  # +1 for blank token
 
     def forward(self, x, text=None, is_train=None, batch_max_length=None):
         return self.fc(x)
@@ -49,7 +50,7 @@ class Attention(nn.Module):
                 output_hiddens[:, i, :] = hidden
             logits = self.generator(output_hiddens.view(-1, self.hidden_dim))
             probs = logits.view(batch_size, num_steps, -1)  # Let the loss function handle the softmax
-        
+
         else:
             # Inference mode or when text is not provided
             probs = torch.zeros(batch_size, num_steps, self.num_classes, dtype=torch.float32, device=device)
@@ -60,9 +61,8 @@ class Attention(nn.Module):
                 probs_step = self.generator(hidden)
                 probs[:, i, :] = probs_step
                 _, target = probs_step.max(dim=1)
-            
-        return probs # (batch_size, num_steps, num_classes)
 
+        return probs  # (batch_size, num_steps, num_classes)
 
 
 class AttentionCell(nn.Module):
@@ -73,39 +73,39 @@ class AttentionCell(nn.Module):
         self.h2h = nn.Linear(hidden_dim, hidden_dim)
         self.score = nn.Linear(hidden_dim, 1, bias=False)
         self.rnn = nn.GRUCell(input_dim + output_dim, hidden_dim)
-        
+
         # Initialize weights
         nn.init.xavier_uniform_(self.i2h.weight)
         nn.init.xavier_uniform_(self.h2h.weight)
         if self.h2h.bias is not None:
             nn.init.constant_(self.h2h.bias, 0)
         nn.init.xavier_uniform_(self.score.weight)
-        
+
         # Initialize GRU weights
         for name, param in self.rnn.named_parameters():
-            if 'weight' in name:
+            if "weight" in name:
                 nn.init.orthogonal_(param)
-            elif 'bias' in name:
+            elif "bias" in name:
                 nn.init.constant_(param, 0)
 
     def forward(self, prev_hidden, batch_H, char_onehots):
         # [batch_size, num_steps, input_dim] -> [batch_size, num_steps, hidden_dim]
         batch_H_proj = self.i2h(batch_H)
         prev_hidden_proj = self.h2h(prev_hidden).unsqueeze(1)
-        
+
         # Scaled dot-product attention
         e = self.score(torch.tanh(batch_H_proj + prev_hidden_proj))
-        
+
         # Apply attention with temperature scaling
         alpha = F.softmax(e, dim=1)  # Equation 5, batch_size x num_steps x 1
         context = torch.bmm(alpha.permute(0, 2, 1), batch_H).squeeze(1)  # Equation 3, batch_size x input_dim
-        
+
         # Concatenate context with character embedding
         concat_context = torch.cat([context, char_onehots], dim=1)  # batch_size x (input_dim + output_dim)
-        
+
         # Update hidden state with GRU
         hidden = self.rnn(concat_context, prev_hidden)
-        
+
         return hidden
 
 

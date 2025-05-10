@@ -1,16 +1,15 @@
 from loguru import logger
 import os
-import io
 import random
 
 from nvidia.dali.plugin.pytorch import DALIGenericIterator
-from PIL import Image
 import numpy as np
 import torch
 
+
 class LightningWrapper(DALIGenericIterator):
     def __init__(self, pipelines, dataset_size, *args, **kwargs):
-        super().__init__(pipelines = pipelines, *args, **kwargs)
+        super().__init__(pipelines=pipelines, *args, **kwargs)
         self.pipelines = pipelines
         self.dataset_size = dataset_size
 
@@ -24,10 +23,11 @@ class LightningWrapper(DALIGenericIterator):
         batch["data"] = batch["data"].detach().clone()
         batch["label"] = batch["label"].detach().clone()
         return batch
-    
+
     def __code__(self):
         return super().__code()
-            
+
+
 class ExternalInputCallable(object):
     def __init__(self, steps_per_epoch, data_path, converter, images_names, labels, batch_size=32):
         self.data_path = data_path
@@ -50,9 +50,9 @@ class ExternalInputCallable(object):
         image_name, label = self.data[idx % len(self.data)]
         image_path = os.path.join(self.data_path, image_name)
 
-        with open(image_path, 'rb') as f:
+        with open(image_path, "rb") as f:
             file_bytes = f.read()
-        
+
         image = np.frombuffer(file_bytes, dtype=np.uint8)
         encoded_label, length = self.converter.encode([label])
         return image, torch.squeeze(encoded_label), length

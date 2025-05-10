@@ -1,12 +1,13 @@
 from torchvision.transforms import v2
-import torchvision.transforms as transforms
+
 
 class Scaling:
     def __call__(self, image):
         w, h = image.size
         H = 100
-        scale_ratio = H/h
-        return v2.functional.resize(image,(100, int(w*scale_ratio)))
+        scale_ratio = H / h
+        return v2.functional.resize(image, (100, int(w * scale_ratio)))
+
 
 data_transforms = {
     "train": v2.Compose(
