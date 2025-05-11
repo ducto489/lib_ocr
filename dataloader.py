@@ -18,7 +18,7 @@ import os
 from nvidia.dali.pipeline import pipeline_def
 import nvidia.dali.types as types
 import nvidia.dali.fn as fn
-
+import numpy as np
 
 class OCRDataModule(LightningDataModule):
     def __init__(
@@ -141,6 +141,10 @@ class DALI_OCRDataModule(LightningDataModule):
         self.train_data_path = os.path.join(self.train_data_path, "images")
         self.val_data_path = os.path.join(self.val_data_path, "images")
 
+        self.MEAN = np.asarray([0.485, 0.456, 0.406])[None, None, :]
+        self.STD = np.asarray([0.229, 0.224, 0.225])[None, None, :]
+        self.SCALE = 1 / 255.
+
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
         train_pipeline = self.get_dali_train_pipeline_aug(batch_size=self.batch_size, num_threads=self.num_workers)
@@ -203,7 +207,7 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
         images = fn.resize(images, device="cpu", resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
+        images = fn.normalize(images, device="cpu", dtype=types.FLOAT, mean=self.MEAN, std=self.STD, scale=self.SCALE)
         # images = images.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
@@ -237,7 +241,7 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
         images = fn.resize(images, device="cpu", resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
+        images = fn.normalize(images, device="cpu", dtype=types.FLOAT, mean=self.MEAN, std=self.STD, scale=self.SCALE)
         # images = images.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
@@ -290,7 +294,7 @@ class DALI_OCRDataModule(LightningDataModule):
             inverse_map=False,
         )
         images = fn.noise.gaussian(images, mean=0.0, stddev=fn.random.uniform(range=[-10, 10]))
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT)
+        images = fn.normalize(images, device="cpu", dtype=types.FLOAT, mean=self.MEAN, std=self.STD, scale=self.SCALE)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)
