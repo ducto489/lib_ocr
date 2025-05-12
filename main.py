@@ -168,7 +168,7 @@ class OCRModel(LightningModule):
 
         self.log("val_loss", loss, prog_bar=True)
         return loss
-    
+
     def predict_step(self, batch, batch_idx):
         images = batch["data"]
 

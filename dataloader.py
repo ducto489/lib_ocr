@@ -20,6 +20,7 @@ import nvidia.dali.types as types
 import nvidia.dali.fn as fn
 import numpy as np
 
+
 class OCRDataModule(LightningDataModule):
     def __init__(
         self,
@@ -143,7 +144,7 @@ class DALI_OCRDataModule(LightningDataModule):
 
         self.MEAN = np.asarray([0.485, 0.456, 0.406])[None, None, :]
         self.STD = np.asarray([0.229, 0.224, 0.225])[None, None, :]
-        self.SCALE = 1 / 255.
+        self.SCALE = 1 / 255.0
 
     def train_dataloader(self):
         logger.debug("Building train DALI pipelines...")
@@ -207,7 +208,9 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         images = fn.resize(images, device="gpu", resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale = self.SCALE)
+        images = fn.normalize(
+            images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale=self.SCALE
+        )
         # images = images.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
@@ -241,7 +244,9 @@ class DALI_OCRDataModule(LightningDataModule):
         )
         images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         images = fn.resize(images, device="gpu", resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale=self.SCALE)
+        images = fn.normalize(
+            images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale=self.SCALE
+        )
         # images = images.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
@@ -294,7 +299,9 @@ class DALI_OCRDataModule(LightningDataModule):
             inverse_map=False,
         )
         images = fn.noise.gaussian(images, mean=0.0, stddev=fn.random.uniform(range=[-10, 10]))
-        images = fn.normalize(images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale=self.SCALE)
+        images = fn.normalize(
+            images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale=self.SCALE
+        )
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)

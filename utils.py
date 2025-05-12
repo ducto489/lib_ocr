@@ -179,6 +179,7 @@ def test_ctc_label_converter_clovaai():
     print("Encoded:", text_index)
     print("Decoded:", converter.decode(text_index, length))
 
+
 def test_attn_label_converter(text=["hel` lo", "world"]):
     vocab = Vocab()
     converter = AttnLabelConverter(vocab.get_vocab(), 10, device="cpu")
@@ -187,10 +188,13 @@ def test_attn_label_converter(text=["hel` lo", "world"]):
     print("Encoded:", text_index)
     print("Decoded:", converter.decode(text_index, None))
     import torch.nn as nn
+
     loss = nn.CrossEntropyLoss(ignore_index=0)
     # print(text[0][1:])
     print(converter.encode([text[0][1:]])[0])
     print(loss(converter.encode([text[0][1:]])[0], text_index))
+
+
 class SentenceErrorRate(Metric):
     """Custom metric to compute Sentence Error Rate (SER).
     SER is the percentage of sentences that contain any errors."""
