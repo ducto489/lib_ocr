@@ -119,9 +119,6 @@ class OCRModel(LightningModule):
         else:
             preds = self(images, text=text_encoded[:, :-1]).to(device)
             target = text_encoded[:, 1:].to(device)
-            logger.info(f"{self.converter.decode(text_encoded, None)=}")
-            _, pred_index = preds.max(2)
-            logger.info(f"{self.converter.decode(pred_index, None)=}")
             loss = self.loss(preds.view(-1, preds.shape[-1]), target.contiguous().view(-1))
 
         # Log metrics
