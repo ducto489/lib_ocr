@@ -3,7 +3,7 @@
 python cli.py fit \
     --data.train_data_path "/home/qsvm/dataset/train" \
     --data.val_data_path "/home/qsvm/dataset/val" \
-    --data.batch_size 64 \
+    --data.batch_size 4 \
     --data.num_workers 8 \
     --data.dali True \
     --data.frac 1 \

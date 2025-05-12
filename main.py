@@ -90,6 +90,7 @@ class OCRModel(LightningModule):
         )
 
     def forward(self, x, text):
+        logger.info(f"{x.shape=}")
         x = self.backbone(x)
         if self.seq_module:
             x = self.seq_module(x)
@@ -118,6 +119,9 @@ class OCRModel(LightningModule):
         else:
             preds = self(images, text=text_encoded[:, :-1]).to(device)
             target = text_encoded[:, 1:].to(device)
+            logger.info(f"{self.converter.decode(text_encoded, None)=}")
+            _, pred_index = preds.max(2)
+            logger.info(f"{self.converter.decode(pred_index, None)=}")
             loss = self.loss(preds.view(-1, preds.shape[-1]), target.contiguous().view(-1))
 
         # Log metrics
@@ -168,6 +172,28 @@ class OCRModel(LightningModule):
 
         self.log("val_loss", loss, prog_bar=True)
         return loss
+    
+    def predict_step(self, batch, batch_idx):
+        images = batch["data"]
+
+        if self.pred_name == "ctc":
+            # Forward pass
+            logits = self(images, text=None)
+            # Prepare CTC input
+            log_probs = logits.log_softmax(2).permute(1, 0, 2)
+
+            # Get predictions for metrics
+            preds = log_probs.argmax(2).permute(1, 0).detach().cpu()
+            pred_texts = self.converter.decode(preds)
+
+        else:
+            # Attention model validation
+            preds = self(images, text=None).to(device)
+            # Get predictions for metrics
+            _, pred_index = preds.max(2)
+            pred_texts = self.converter.decode(pred_index, None)
+
+        return pred_texts
 
     def on_train_start(self):
         # Log hyperparameters to the logger

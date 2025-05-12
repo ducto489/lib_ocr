@@ -11,6 +11,7 @@ from pathlib import Path
 from main import OCRModel
 from dataloader import DALI_OCRDataModule
 from utils import CTCLabelConverter_clovaai, AttnLabelConverter
+import torch.nn.functional as F
 
 def parse_args():
     parser = argparse.ArgumentParser(description='OCR Inference Script')
@@ -59,12 +60,16 @@ def main():
 
     # Process each batch
     results = []
+    n_correct = 0
+    total_samples = 0
+    confidence_score_list = []
+    
     for batch in val_dataloader:
         images = batch["data"]
         labels = batch["label"]
         
         # Move to device
-        images = images.to(next(model.parameters()).device)
+        images = images.to(model.device)
         
         with torch.no_grad():
             # Forward pass
@@ -79,16 +84,46 @@ def main():
                 _, pred_index = preds.max(2)
                 text = data_module.converter.decode(pred_index, pred_size)
         
-        # Store result
+        # Get ground truth
+        preds_prob = F.softmax(preds, dim=2)
+        preds_max_prob, _ = preds_prob.max(dim=2)
         ground_truth = data_module.converter.decode(labels, None)
-        for i, t in enumerate(text):
-            original_label = ground_truth[i]
-            # print(f"Original: {original_label}")
-            # print(f"Predicted: {t}")
-            results.append(f"{original_label}\t{t}")
+        
+        # Calculate confidence scores and accuracy
+        for i, (pred, gt, pred_max_prob) in enumerate(zip(text, ground_truth, preds_max_prob)):
+            total_samples += 1
+            
+            if model.pred_name == "attn":
+                # For attention model, prune after end of sentence token
+                eos_idx = '[EOS]'
+                if eos_idx in gt:
+                    gt = gt[:gt.find(eos_idx)]
+                if eos_idx in pred:
+                    pred_EOS = pred.find(eos_idx)
+                    pred = pred[:pred_EOS]
+                    pred_max_prob = pred_max_prob[:pred_EOS]
+
+            if pred == gt:
+                n_correct += 1
+
+            # Calculate confidence score (multiply of pred_max_prob)
+            try:
+                confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+            except:
+                confidence_score = 0  # for empty pred case
+            confidence_score_list.append(confidence_score)
+            
+            # Store result with confidence score
+            results.append(f"{gt}\t{pred}\t{confidence_score.item():.4f}")
+    
+    # Calculate overall accuracy
+    accuracy = n_correct / float(total_samples) * 100 if total_samples > 0 else 0
+    print(f"Accuracy: {accuracy:.2f}%")
+    print(f"Average confidence score: {sum(confidence_score_list)/len(confidence_score_list):.4f}" if confidence_score_list else "No confidence scores calculated")
 
     # Save results
     with open(args.output, 'w', encoding='utf-8') as f:
+        f.write('Ground Truth\tPrediction\tConfidence\n')
         f.write('\n'.join(results))
     
     print(f"Results saved to {args.output}")

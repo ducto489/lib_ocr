@@ -27,6 +27,20 @@ class LightningWrapper(DALIGenericIterator):
     def __code__(self):
         return super().__code()
 
+class PredictLightningWrapper(DALIGenericIterator):
+    def __init__(self, pipelines, *args, **kwargs):
+        super().__init__(pipelines=pipelines, *args, **kwargs)
+        self.pipelines = pipelines
+
+    def __next__(self):
+        batch = super().__next__()[0]
+
+        batch["data"] = batch["data"].permute(0, 3, 1, 2)
+        batch["data"] = batch["data"].detach().clone()
+        return batch
+
+    def __code__(self):
+        return super().__code()
 
 class ExternalInputCallable(object):
     def __init__(self, steps_per_epoch, data_path, converter, images_names, labels, batch_size=32):
