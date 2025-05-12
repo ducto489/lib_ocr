@@ -205,15 +205,15 @@ class DALI_OCRDataModule(LightningDataModule):
             dtype=[types.UINT8, types.INT64, types.INT64],
             prefetch_queue_depth=8,
         )
-        images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
-        images = fn.resize(images, device="cpu", resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT, mean=self.MEAN, stddev=self.STD, scale=self.SCALE)
+        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
+        images = fn.resize(images, device="gpu", resize_y=100, dtype=types.FLOAT)
+        images = fn.normalize(images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale = self.SCALE)
         # images = images.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)
-        return images.gpu(), indices.gpu(), length.gpu()
+        return images, indices.gpu(), length.gpu()
 
     @pipeline_def(
         num_threads=8,
@@ -239,15 +239,15 @@ class DALI_OCRDataModule(LightningDataModule):
             dtype=[types.UINT8, types.INT64, types.INT64],
             prefetch_queue_depth=8,
         )
-        images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
-        images = fn.resize(images, device="cpu", resize_y=100, dtype=types.FLOAT)
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT, mean=self.MEAN, stddev=self.STD, scale=self.SCALE)
+        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
+        images = fn.resize(images, device="gpu", resize_y=100, dtype=types.FLOAT)
+        images = fn.normalize(images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale=self.SCALE)
         # images = images.gpu()
         # images = fn.cast(images, dtype=types.FLOAT)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)
-        return images.gpu(), indices.gpu(), length.gpu()
+        return images, indices.gpu(), length.gpu()
 
     @pipeline_def(
         num_threads=8,
@@ -272,14 +272,14 @@ class DALI_OCRDataModule(LightningDataModule):
             dtype=[types.UINT8, types.INT64, types.INT64],
             prefetch_queue_depth=8,
         )
-        images = fn.decoders.image(images, device="cpu", output_type=types.RGB)
+        images = fn.decoders.image(images, device="mixed", output_type=types.RGB)
         images = fn.rotate(
             images,
-            device="cpu",
+            device="gpu",
             angle=fn.random.uniform(range=[-1, 1]),
             dtype=types.FLOAT,
         )
-        images = fn.resize(images, device="cpu", resize_y=100)
+        images = fn.resize(images, device="gpu", resize_y=100)
         images = fn.color_twist(
             images,
             brightness=fn.random.uniform(range=[0.8, 1.2]),
@@ -294,8 +294,8 @@ class DALI_OCRDataModule(LightningDataModule):
             inverse_map=False,
         )
         images = fn.noise.gaussian(images, mean=0.0, stddev=fn.random.uniform(range=[-10, 10]))
-        images = fn.normalize(images, device="cpu", dtype=types.FLOAT, mean=self.MEAN, stddev=self.STD, scale=self.SCALE)
+        images = fn.normalize(images, device="gpu", dtype=types.FLOAT, mean=self.MEAN / self.SCALE, stddev=self.STD, scale=self.SCALE)
         images = fn.pad(images, fill_value=0)
         indices = fn.pad(indices, fill_value=0)
         length = fn.pad(length, fill_value=0)
-        return images.gpu(), indices.gpu(), length.gpu()
+        return images, indices.gpu(), length.gpu()
