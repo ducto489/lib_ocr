@@ -69,10 +69,8 @@ The primary dataset can be downloaded from Hugging Face. Choose one of the follo
 
 ```bash
 # Download the dataset archive
-wget https://huggingface.co/datasets/ducto489/ocr_datasets/resolve/main/output.zip
-
-# Extract to your desired data location
-unzip output.zip -d /path/to/your/data/directory
+wget https://huggingface.co/ducto489/ocr_datasets/resolve/main/ocr_dataset.zip 
+unzip ocr_dataset.zip -d /path/to/your/data/directory
 ```
 
 **Method 2: Using Hugging Face CLI**
@@ -82,8 +80,8 @@ unzip output.zip -d /path/to/your/data/directory
 pip install huggingface_hub
 
 # Download and extract the dataset
-huggingface-cli download ducto489/ocr_datasets output.zip --repo-type dataset --local-dir .
-unzip output.zip -d /path/to/your/data/directory
+huggingface-cli download ducto489/ocr_datasets ocr_dataset.zip --repo-type dataset --local-dir .
+unzip ocr_dataset.zip -d /path/to/your/data/directory
 ```
 
 Replace `/path/to/your/data/directory` with the actual path where you want to store the data.
