@@ -42,10 +42,18 @@ class Inference(LightningDataModule):
         return image
     
 if __name__ == "__main__":
-    inference = Inference(image_path="inference_image/")
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='OCR Inference Script')
+    parser.add_argument('--image_path', type=str, required=True, help='Path to the image or directory of images')
+    parser.add_argument('--checkpoint', type=str, required=True, help='Path to the model checkpoint')
+    args = parser.parse_args()
+    
+    inference = Inference(image_path=args.image_path)
     predict_dataloader = inference.predict_dataloader()
-    model = OCRModel.load_from_checkpoint("/home/qsvm/temp/lib_ocr/checkpoints/runreal200/model_val_epoch_0_loss_2.0446_cer_0.2615_wer_0.7985.ckpt",
-                                          strict=False,
+    model = OCRModel.load_from_checkpoint(args.checkpoint,
+                                          strict=True,
                                           batch_max_length=200, 
                                           dali=True, 
                                           map_location="cuda", 
