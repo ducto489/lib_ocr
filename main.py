@@ -90,7 +90,6 @@ class OCRModel(LightningModule):
         )
 
     def forward(self, x, text):
-        logger.info(f"{x.shape=}")
         x = self.backbone(x)
         if self.seq_module:
             x = self.seq_module(x)
