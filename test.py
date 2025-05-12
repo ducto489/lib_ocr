@@ -28,7 +28,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description='OCR Inference Script')
     parser.add_argument('--checkpoint', type=str, required=True, help='Path to the model checkpoint')
     parser.add_argument('--data_root', type=str, required=True, help='Root directory containing evaluation datasets')
-    parser.add_argument('--batch_max_length', type=int, default=25, help='Maximum sequence length for text')
     parser.add_argument('--output_dir', type=str, default='results', help='Directory to save results')
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size for inference')
     return parser.parse_args()
@@ -36,7 +35,7 @@ def parse_args():
 def evaluate_dataset(model, dataset_path, args, device):
     # Initialize DALI_OCRDataModule for this dataset
     data_module = DALI_OCRDataModule(
-        batch_max_length=args.batch_max_length,
+        batch_max_length=200,
         frac=1.0,
         dali=True,
         train_data_path=dataset_path,
@@ -134,7 +133,7 @@ def main():
     model = OCRModel.load_from_checkpoint(
         args.checkpoint,
         strict=False,
-        batch_max_length=args.batch_max_length,
+        batch_max_length=200,
         dali=True,
         map_location=device,
         pred_name="attn"
