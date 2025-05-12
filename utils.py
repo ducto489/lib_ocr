@@ -148,7 +148,7 @@ class AttnLabelConverter:
         texts = []
         for index in range(text_index.size(0)):
             text = ""
-            for i in range(1, text_index.size(1)):  # Start from 1 to skip [GO] token if it's encoded
+            for i in range(0, text_index.size(1)):
                 char_index = text_index[index, i].item()  # Use .item() to get Python int
                 if char_index == self.dict["[EOS]"]:
                     break  # Stop decoding at [EOS]
@@ -179,7 +179,18 @@ def test_ctc_label_converter_clovaai():
     print("Encoded:", text_index)
     print("Decoded:", converter.decode(text_index, length))
 
-
+def test_attn_label_converter(text=["hel` lo", "world"]):
+    vocab = Vocab()
+    converter = AttnLabelConverter(vocab.get_vocab(), 10, device="cpu")
+    text_index, _ = converter.encode(text)
+    print("Original:", text)
+    print("Encoded:", text_index)
+    print("Decoded:", converter.decode(text_index, None))
+    import torch.nn as nn
+    loss = nn.CrossEntropyLoss(ignore_index=0)
+    # print(text[0][1:])
+    print(converter.encode([text[0][1:]])[0])
+    print(loss(converter.encode([text[0][1:]])[0], text_index))
 class SentenceErrorRate(Metric):
     """Custom metric to compute Sentence Error Rate (SER).
     SER is the percentage of sentences that contain any errors."""
@@ -209,4 +220,4 @@ class SentenceErrorRate(Metric):
 
 
 if __name__ == "__main__":
-    test_ctc_label_converter(text=["hello ", "world"])
+    test_attn_label_converter(text=["hello  "])

@@ -1,0 +1,1 @@
+python inference.py --image_path /home/qsvm/temp/lib_ocr/inference_image --checkpoint /home/qsvm/temp/lib_ocr/checkpoints/runreal200/model_val_epoch_0_loss_1.9684_cer_0.3009_wer_0.8603.ckpt
