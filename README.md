@@ -131,7 +131,7 @@ This normalization simplifies the vocabulary the model needs to learn.
 
 
 ### Datasets Used
-
+![pie chart about Datasets](/image/dataset.png)
 The training leverages a combined dataset from the following sources:
 
 | Dataset                                                                                  | Train Samples | Validation Samples | Notes                       |
