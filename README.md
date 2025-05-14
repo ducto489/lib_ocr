@@ -1,5 +1,7 @@
 # OCR - Optical Character Recognition Engine
 
+![clickbait image](/image/clickbait.png)
+
 This repository provides a flexible and high-performance Optical Character Recognition (OCR) system built with PyTorch Lightning and accelerated using NVIDIA DALI for data loading.
 
 ## Overview
