@@ -4,7 +4,7 @@ This repository provides a flexible and high-performance Optical Character Recog
 
 ![clickbait image](/image/Pytorch-Dataloader.png)
 
-**Left (PyTorch DataLoader):** The GPU frequently idles or is underutilized, indicating data bottlenecks. **Right (Green - NVIDIA DALI):** The GPU maintains consistently high utilization. DALI keeps the L4 GPU working hard, reducing wasted cycles and speeding up training.
+_**Left (PyTorch DataLoader):** The GPU frequently idles or is underutilized, indicating data bottlenecks. **Right (NVIDIA DALI):** The GPU maintains consistently high utilization. DALI keeps the L4 GPU working hard, reducing wasted cycles and speeding up training._
 
 ## Overview
 
