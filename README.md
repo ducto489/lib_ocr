@@ -2,6 +2,8 @@
 
 This repository provides a flexible and high-performance Optical Character Recognition (OCR) system built with PyTorch Lightning and accelerated using NVIDIA DALI for data loading.
 
+Check out my detailed documet: **[Accelerating OCR Training with NVIDIA DALI: A Practical Guide and Case Study](https://ducto489.github.io/projects/ocr-dali/)**
+
 ![clickbait image](/image/Pytorch-Dataloader.png)
 
 _**Left (PyTorch DataLoader):** The GPU frequently idles or is underutilized, indicating data bottlenecks. **Right (NVIDIA DALI):** The GPU maintains consistently high utilization. DALI keeps the L4 GPU working hard, reducing wasted cycles and speeding up training._
