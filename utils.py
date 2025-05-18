@@ -139,8 +139,14 @@ class AttnLabelConverter:
         for i, t in enumerate(text):
             text = list(t)
             text.append("[EOS]")
-            text = [self.dict[char] for char in text]
-            batch_text[i][1 : 1 + len(text)] = torch.LongTensor(text)
+            text_encoded = []
+            for char in text:
+                try:
+                    text_encoded.append(self.dict[char])
+                except KeyError:
+                    # Handle unknown character by adding a placeholder index
+                    text_encoded.append(self.dict[" "])
+            batch_text[i][1 : 1 + len(text_encoded)] = torch.LongTensor(text_encoded)
         return (batch_text.to(self.device), torch.LongTensor(length).to(self.device))
 
     def decode(self, text_index, length):

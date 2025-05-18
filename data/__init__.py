@@ -2,7 +2,7 @@ from .dataset import OCRDataset
 from .collate import OCRCollator
 from .augmentations import data_transforms, data_transforms_2
 from .dataset import process_tgt
-from .dali import ExternalInputCallable, LightningWrapper, PredictLightningWrapper
+from .dali import ExternalInputCallable, LightningWrapper
 from .vocab import Vocab
 
 __all__ = [
@@ -13,6 +13,5 @@ __all__ = [
     "process_tgt",
     "ExternalInputCallable",
     "LightningWrapper",
-    "PredictLightningWrapper",
     "Vocab",
 ]

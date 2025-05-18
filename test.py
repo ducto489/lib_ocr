@@ -97,7 +97,7 @@ def evaluate_dataset(model, dataset_path, args, device):
                         pred = pred[:pred_EOS]
                         pred_max_prob = pred_max_prob[:pred_EOS]
 
-                if pred == gt:
+                if pred.lower() == gt.lower():
                     n_correct += 1
 
                 # Calculate confidence score

@@ -1,6 +1,6 @@
+results*/
 notebook/
 experiment/
-images/
 # images
 label_analysis/
 analyze_labels.py

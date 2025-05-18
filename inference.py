@@ -1,12 +1,25 @@
-from data import PredictLightningWrapper
+from nvidia.dali.plugin.pytorch import DALIGenericIterator
 from nvidia.dali.pipeline import pipeline_def
 import nvidia.dali.types as types
 import nvidia.dali.fn as fn
 from pytorch_lightning import LightningDataModule
 import numpy as np
-import torch
 
-from main import OCRModel
+
+class PredictLightningWrapper(DALIGenericIterator):
+    def __init__(self, pipelines, *args, **kwargs):
+        super().__init__(pipelines=pipelines, *args, **kwargs)
+        self.pipelines = pipelines
+
+    def __next__(self):
+        batch = super().__next__()[0]
+
+        batch["data"] = batch["data"].permute(0, 3, 1, 2)
+        batch["data"] = batch["data"].detach().clone()
+        return batch
+
+    def __code__(self):
+        return super().__code()
 
 
 class Inference(LightningDataModule):
@@ -42,24 +55,3 @@ class Inference(LightningDataModule):
         )
         image = fn.pad(image, fill_value=0)
         return image
-
-
-if __name__ == "__main__":
-    import argparse
-
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="OCR Inference Script")
-    parser.add_argument("--image_path", type=str, required=True, help="Path to the image or directory of images")
-    parser.add_argument("--checkpoint", type=str, required=True, help="Path to the model checkpoint")
-    args = parser.parse_args()
-
-    inference = Inference(image_path=args.image_path)
-    predict_dataloader = inference.predict_dataloader()
-    model = OCRModel.load_from_checkpoint(
-        args.checkpoint, strict=True, batch_max_length=200, dali=True, map_location="cuda", pred_name="attn"
-    )
-    model.eval()
-
-    for batch in predict_dataloader:
-        preds = model.predict_step(batch, 0)
-        print(preds)
