@@ -2,7 +2,7 @@
 
 This repository provides a flexible and high-performance Optical Character Recognition (OCR) system built with PyTorch Lightning and accelerated using NVIDIA DALI for data loading.
 
-Check out my detailed documet: **[Accelerating OCR Training with NVIDIA DALI: A Practical Guide and Case Study](https://ducto489.github.io/projects/ocr-dali/)**
+Check out my detailed documentation to learn about data handling, training approaches, and the performance benefits of NVIDIA DALI: **[Accelerating OCR Training with NVIDIA DALI: A Practical Guide and Case Study](https://ducto489.github.io/projects/ocr-dali/)**
 
 
 ![clickbait image](/image/Pytorch-Dataloader.png)
@@ -20,27 +20,15 @@ This project implements an end-to-end OCR pipeline, featuring:
 
 ## Table of Contents
 
-- [Features](#features)
+- [Acknowledge](#acknowledgements)
 - [Setup](#setup)
-  - [Environment](#environment)
-  - [Get the Code](#get-the-code)
-  - [Install Dependencies](#install-dependencies)
-  - [Download Data](#download-data)
-  - [Data Structure](#data-structure)
-- [Data Details](#data-details)
-  - [Character Normalization](#character-normalization)
-  - [Datasets Used](#datasets-used)
 - [Training](#training)
 - [Inference](#inference)
 - [Evaluation](#evaluation)
 
-## Features
+## Acknowledgements
 
-*   **Flexible Model Configuration:** Choose from various backbones (ResNet, VGG), sequence modules (BiLSTM), and prediction heads (CTC, Attention).
-*   **NVIDIA DALI Integration:** Enables high-throughput data loading pipelines on GPUs, reducing CPU bottlenecks.
-*   **PyTorch Lightning Workflow:** Organised code, multi-GPU support, logging, checkpointing, and more out-of-the-box.
-*   **Standard Dataset Support:** Includes examples for training on common OCR datasets.
-*   **Clear Inference & Evaluation:** Scripts provided for running predictions and benchmarking performance.
+Special thanks to **Trong Tuan** ([@santapo](https://github.com/santapo)) and **Phuong** ([@mp1704](https://github.com/mp1704)) for their significant help to this project.
 
 ## Setup
 
@@ -70,17 +58,7 @@ pip install -r requirements.txt
 
 ### Download Data
 
-The primary dataset can be downloaded from Hugging Face. Choose one of the following methods:
-
-**Method 1: Using `wget`**
-
-```bash
-# Download the dataset archive
-wget https://huggingface.co/ducto489/ocr_datasets/resolve/main/ocr_dataset.zip 
-unzip ocr_dataset.zip -d /path/to/your/data/directory
-```
-
-**Method 2: Using Hugging Face CLI**
+The primary dataset can be downloaded from Hugging Face:
 
 ```bash
 # Install Hugging Face Hub if you don't have it
@@ -112,44 +90,6 @@ Organize the downloaded data into the following structure:
 ```
 
 The `tgt.csv` should contain image names and their corresponding text labels.
-
-## Data Details
-
-### Character Normalization
-
-To create a uniform character set for the OCR model, the following text normalizations are applied to the labels:
-
-| Original Character(s) | Description        | Normalized Character |
-| :-------------------- | :----------------- | :------------------- |
-| `“`, `”`             | Smart Quotes       | `"`                  |
-| `’`                   | Typographical Apostrophe | `'`                  |
-| `–`, `—`, `−`         | Various Dashes     | `-`                  |
-| `…`                   | Ellipsis           | `...`                |
-| `Ð`                   | Icelandic Eth (Uppercase) | `Đ`                  |
-| `ð`                   | Icelandic Eth (Lowercase) | `đ`                  |
-| `Ö`, `Ō`             | O with accents     | `O`                  |
-| `Ü`, `Ū`             | U with accents     | `U`                  |
-| `Ā`                   | A with macron      | `A`                  |
-| `ö`, `ō`             | o with accents     | `o`                  |
-| `ü`, `ū`             | u with accents     | `u`                  |
-| `ā`                   | a with macron      | `a`                  |
-
-This normalization simplifies the vocabulary the model needs to learn.
-
-
-### Datasets Used
-![pie chart about Datasets](/image/dataset.png)
-The training leverages a combined dataset from the following sources:
-
-| Dataset                                                                                  | Train Samples | Validation Samples | Notes                       |
-| :--------------------------------------------------------------------------------------- | --------------: | -------------------: | :-------------------------- |
-| [vietocr](https://github.com/pbcquoc/vietocr)                                           | 441,025        | 110,257             | Random word images removed |
-| [Paper (Deep Text Rec. Benchmark)](https://github.com/clovaai/deep-text-recognition-benchmark) | 3,287,346      | 6,992               |                             |
-| [Synth90k](https://www.robots.ox.ac.uk/~vgg/data/text/)                                  | 7,224,612      | 802,731             |                             |
-| [Cinnamon AI (Handwritten)](https://www.kaggle.com/datasets/hariwh0/cinnamon-ai-handwritten-addresses) | 1,470          | 368                 |                             |
-| **Combined Total**                                                                       | **~11.0 M**    | **~0.9 M**          |                             |
-
-**Vietnamese Data:** Please note that Vietnamese samples constitute only **1.76%** (209,120 images) of this combined dataset, from **VietOCR** (207,282) and **Cinnamon AI** (1,838). This reflects the limited availability of public Vietnamese OCR data.
 
 ## Training
 
@@ -187,7 +127,7 @@ python cli.py fit \
 
 *   `--data.train_data_path`, `--data.val_data_path`: Paths to your training and validation data.
 *   `--data.batch_size`, `--data.num_workers`: Configure data loading.
-*   `--data.dali`: Set to `True` to use NVIDIA DALI (requires compatible hardware).
+*   `--data.dali`: Set to `True` to use NVIDIA DALI.
 *   `--data.frac`: Use a fraction of the data (e.g., `0.1` for 10%).
 *   `--model.backbone_name`: CNN feature extractor (`resnet18`, `vgg`, etc.).
 *   `--model.seq_name`: Sequence model (`bilstm`, `none`).
@@ -201,21 +141,13 @@ Refer to `python cli.py fit --help` for all available options.
 
 ## Inference
 
-Use the `inference.py` script to run predictions on new images using a trained checkpoint.
+Checkout the Jupyter notebook `inference/inference.ipynb` to run predictions on new images using a trained checkpoint.
 
-**Example Inference Command:**
-
-```bash
-# Found in script/inference.sh
-python inference.py \
-    --image_path "/path/to/your/images_or_single_image.jpg" \
-    --checkpoint "/path/to/your/checkpoints/my_experiment/model.ckpt"
-```
-
-**Inference Parameters:**
-
-*   `--image_path`: Path to a single image file or a directory containing images.
-*   `--checkpoint`: Path to the trained model checkpoint (`.ckpt`) file.
+| Backbone                               | Time          |
+|----------------------------------------|---------------|
+| Our model: Resnet - Bilstm - Attention | 73ms @ A6000  |
+| VietOCR VGG19-bn - Transformer         | 565ms @ A6000 |
+| VietOCR VGG19-bn - Seq2Seq             |  30ms @ A6000 |
 
 ## Evaluation
 

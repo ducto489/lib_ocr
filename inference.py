@@ -47,7 +47,7 @@ class Inference(LightningDataModule):
         py_start_method="spawn",
     )
     def get_dali_predict_pipeline(self):
-        image, _ = fn.file_reader(file_root=self.image_path, shard_id=0, num_shards=1)
+        image, _ = fn.readers.file(file_root=self.image_path, shard_id=0, num_shards=1)
         image = fn.decoders.image(image, device="mixed", output_type=types.RGB)
         image = fn.resize(image, device="gpu", resize_y=100, dtype=types.FLOAT)
         image = fn.normalize(
