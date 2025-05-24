@@ -34,15 +34,6 @@ Special thanks to **Trong Tuan** ([@santapo](https://github.com/santapo)) and **
 
 Follow these steps to set up your environment and download the necessary data.
 
-### Environment
-
-It's recommended to use a virtual environment. This project uses Python 3.11.
-
-```bash
-conda create -n ocr python=3.11
-conda activate ocr
-```
-
 ### Get the Code
 
 ```bash
@@ -53,6 +44,9 @@ cd lib_ocr
 ### Install Dependencies
 
 ```bash
+conda create -n ocr python=3.11
+conda activate ocr
+
 pip install -r requirements.txt
 ```
 
