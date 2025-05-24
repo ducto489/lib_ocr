@@ -61,10 +61,8 @@ pip install -r requirements.txt
 The primary dataset can be downloaded from Hugging Face:
 
 ```bash
-# Install Hugging Face Hub if you don't have it
 pip install huggingface_hub
 
-# Download and extract the dataset
 huggingface-cli download ducto489/ocr_datasets ocr_dataset.zip --repo-type dataset --local-dir .
 unzip ocr_dataset.zip -d /path/to/your/data/directory
 ```
@@ -98,10 +96,7 @@ Use the `cli.py` script with the `fit` command to start training. Key parameters
 **Example Training Command (modify paths and parameters as needed):**
 
 ```bash
-# Navigate to the script directory or adjust paths accordingly
-# Example using parameters from the original README
 # Found in script/train.sh
-
 python cli.py fit \
     --data.train_data_path "/path/to/your/data/directory/train" \
     --data.val_data_path "/path/to/your/data/directory/val" \
@@ -115,12 +110,6 @@ python cli.py fit \
     --model.learning_rate 1e-4 \
     --model.batch_max_length 200 \
     --model.save_dir "checkpoints/my_experiment" \
-    --trainer.max_epochs 10 \
-    --trainer.val_check_interval 0.5 \
-    --trainer.logger WandbLogger \
-    --trainer.logger.name "my-ocr-run" \
-    --trainer.logger.project "OCR_Project" \
-    --trainer.log_every_n_steps 50
 ```
 
 **Key Training Parameters:**
@@ -129,7 +118,7 @@ python cli.py fit \
 *   `--data.batch_size`, `--data.num_workers`: Configure data loading.
 *   `--data.dali`: Set to `True` to use NVIDIA DALI.
 *   `--data.frac`: Use a fraction of the data (e.g., `0.1` for 10%).
-*   `--model.backbone_name`: CNN feature extractor (`resnet18`, `vgg`, etc.).
+*   `--model.backbone_name`: CNN feature extractor (`resnet18`, `vgg`).
 *   `--model.seq_name`: Sequence model (`bilstm`, `none`).
 *   `--model.pred_name`: Prediction head (`ctc`, `attn`).
 *   `--model.learning_rate`: Optimizer learning rate.
@@ -143,11 +132,11 @@ Refer to `python cli.py fit --help` for all available options.
 
 Checkout the Jupyter notebook `inference/inference.ipynb` to run predictions on new images using a trained checkpoint.
 
-| Backbone                               | Time          |
-|----------------------------------------|---------------|
-| Our model: Resnet - Bilstm - Attention | 73ms @ A6000  |
-| VietOCR VGG19-bn - Transformer         | 565ms @ A6000 |
-| VietOCR VGG19-bn - Seq2Seq             |  30ms @ A6000 |
+| Backbone                                | Time          |
+|-----------------------------------------|---------------|
+| Our model: Resnet - Bilstm - Attention  | 73ms @ A6000  |
+| VietOCR: VGG19-bn - Transformer         | 565ms @ A6000 |
+| VietOCR: VGG19-bn - Seq2Seq             |  30ms @ A6000 |
 
 ## Evaluation
 
