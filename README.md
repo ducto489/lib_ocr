@@ -52,7 +52,7 @@ pip install -r requirements.txt
 
 ### Download Data
 
-The primary dataset can be downloaded from Hugging Face:
+The primary dataset can be downloaded from [Hugging Face](https://huggingface.co/datasets/ducto489/ocr_datasets):
 
 ```bash
 pip install huggingface_hub
@@ -124,7 +124,7 @@ Refer to `python cli.py fit --help` for all available options.
 
 ## Inference
 
-Checkout the Jupyter notebook `inference/inference.ipynb` to run predictions on new images using a trained checkpoint.
+Checkout the Jupyter notebook `inference/inference.ipynb` to run predictions on new images using a trained checkpoint from [Hugging Face](https://huggingface.co/ducto489/ocr_model).
 
 | Backbone                                | Time          |
 |-----------------------------------------|---------------|
