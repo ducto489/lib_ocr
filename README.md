@@ -11,7 +11,7 @@ _**Left (PyTorch DataLoader):** The GPU frequently idles or is underutilized, in
 
 ## Overview
 
-This project implements an end-to-end OCR pipeline, featuring:
+This project implements an end-to-end training OCR pipeline, featuring:
 
 *   **Multiple Architectures:** Easily swap CNN backbones (ResNet, VGG) and sequence modeling layers (BiLSTM).
 *   **Prediction Methods:** Supports both CTC (Connectionist Temporal Classification) and Attention-based decoding.
