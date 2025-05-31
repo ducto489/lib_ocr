@@ -1,4 +1,4 @@
-# OCR - Optical Character Recognition Engine
+# VietConizer:  Vietnamese OCR with NVIDIA DALI
 
 This repository provides a flexible and high-performance Optical Character Recognition (OCR) system built with PyTorch Lightning and accelerated using NVIDIA DALI for data loading.
 
